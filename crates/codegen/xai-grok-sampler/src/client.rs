@@ -959,7 +959,7 @@ impl SamplingClient {
                             Some(Err(stream_error))
                         } else {
                             Some(
-                                serde_json::from_str::<ChatCompletionChunk>(data).map_err(|e| {
+                                normalize_and_parse_chunk(data).map_err(|e| {
                                     tracing::error!(
                                         error = %e,
                                         raw_data = %data,
@@ -1888,6 +1888,34 @@ impl SamplingClient {
                 should_retry: None,
             })
     }
+}
+
+/// Normalize an SSE data chunk before deserializing into [`ChatCompletionChunk`].
+///
+/// Many OpenAI-compatible providers deviate from the spec:
+/// - Missing `id`, `object`, `created`, or `model` fields
+/// - Non-standard `finish_reason` values (e.g. `"end_turn"`, `"STOP"`, `"eos"`, `"max_tokens"`)
+fn normalize_and_parse_chunk(data: &str) -> std::result::Result<ChatCompletionChunk, serde_json::Error> {
+    let mut v: serde_json::Value = serde_json::from_str(data)?;
+
+    if let Some(choices) = v.get_mut("choices").and_then(|c| c.as_array_mut()) {
+        for choice in choices.iter_mut() {
+            if let Some(fr) = choice.get_mut("finish_reason") {
+                if let Some(s) = fr.as_str() {
+                    let normalized = match s.to_lowercase().as_str() {
+                        "end_turn" | "stop_sequence" => "stop",
+                        "max_tokens" => "length",
+                        "tool_use" => "tool_calls",
+                        "content_filtered" => "content_filter",
+                        _ => s,
+                    };
+                    *fr = serde_json::Value::String(normalized.to_string());
+                }
+            }
+        }
+    }
+
+    serde_json::from_value(v)
 }
 
 #[cfg(test)]
