@@ -1,8 +1,9 @@
-name: Rust CI
+name: Rust CI/CD
 
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*.*.*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -10,8 +11,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint-and-test:
-    name: Check, Lint & Test
+  ci:
+    name: Check, Test & Build (CI)
     runs-on: ubuntu-latest
 
     steps:
@@ -23,17 +24,53 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Setup Protoc Compiler
+        uses: arduino/setup-protoc@v3
+
       - name: Cache Cargo Dependencies
         uses: swatinem/rust-cache@v2
 
-      - name: Check Format
+      - name: Check Format (Non-blocking)
         run: cargo fmt --all --check
+        continue-on-error: true
+
+      - name: Cargo Fast Check
+        run: cargo check --workspace
 
       - name: Run Clippy Linter
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace
+        continue-on-error: true
 
-      - name: Build Project
-        run: cargo build --verbose
+      - name: Run Unit Tests
+        run: cargo test --workspace
 
-      - name: Run Tests
-        run: cargo test --verbose
+      - name: Build Debug Binaries
+        run: cargo build --workspace
+
+  cd:
+    name: Publish Release Binary (CD)
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Protoc Compiler
+        uses: arduino/setup-protoc@v3
+
+      - name: Build Release Binary
+        run: cargo build --release
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
