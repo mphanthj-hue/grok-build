@@ -1,76 +1,154 @@
-name: Rust CI/CD
+name: CI/CD
 
 on:
   push:
-    branches: [ "main" ]
-    tags: [ "v*.*.*" ]
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: short
 
 jobs:
-  ci:
-    name: Check, Test & Build (CI)
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          toolchain: "1.92.0"
+          components: rustfmt
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
 
-      - name: Setup Protoc Compiler
-        uses: arduino/setup-protoc@v3
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.92.0"
+          components: clippy
+      - uses: arduino/setup-protoc@v3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "clippy-x86_64"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo clippy
+        run: cargo clippy --all-targets --workspace -- -D warnings
 
-      - name: Cache Cargo Dependencies
-        uses: swatinem/rust-cache@v2
+  test:
+    name: Test (x86_64)
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.92.0"
+      - uses: arduino/setup-protoc@v3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "test-x86_64"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@nextest
+      - name: cargo nextest run
+        run: cargo nextest run --workspace --locked --no-fail-fast
+      - name: cargo test --doc
+        run: cargo test --doc --workspace --locked
 
-      - name: Check Format (Non-blocking)
-        run: cargo fmt --all --check
-        continue-on-error: true
+  cross-check:
+    name: Cross-check (aarch64)
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.92.0"
+          targets: aarch64-unknown-linux-gnu
+      - uses: arduino/setup-protoc@v3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "check-aarch64"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install cross-compilation tools
+        run: sudo apt-get update -q && sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: cargo check (aarch64)
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: cargo check --workspace --locked --target aarch64-unknown-linux-gnu
 
-      - name: Cargo Fast Check
-        run: cargo check --workspace
-
-      - name: Run Clippy Linter
-        run: cargo clippy --workspace
-        continue-on-error: true
-
-      - name: Run Unit Tests
-        run: cargo test --workspace
-
-      - name: Build Debug Binaries
-        run: cargo build --workspace
-
-  cd:
-    name: Publish Release Binary (CD)
-    needs: ci
+  release:
+    name: Release (${{ matrix.target }})
     if: startsWith(github.ref, 'refs/tags/v')
+    needs: [clippy, test, cross-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.92.0"
+          targets: ${{ matrix.target }}
+      - uses: arduino/setup-protoc@v3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-${{ matrix.target }}"
+      - name: Install cross-linker (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update -q && sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Build (release-dist)
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: cargo build --profile release-dist --locked --target ${{ matrix.target }} -p xai-grok-pager
+      - name: Extract debug symbols (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          objcopy --only-keep-debug \
+            target/${{ matrix.target }}/release-dist/xai-grok-pager \
+            target/${{ matrix.target }}/release-dist/xai-grok-pager.debug
+          strip --strip-debug \
+            target/${{ matrix.target }}/release-dist/xai-grok-pager
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grok-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release-dist/xai-grok-pager
+            target/${{ matrix.target }}/release-dist/xai-grok-pager.debug
+
+  publish:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Protoc Compiler
-        uses: arduino/setup-protoc@v3
-
-      - name: Build Release Binary
-        run: cargo build --release
-
-      - name: Publish to GitHub Releases
-        uses: softprops/action-gh-release@v2
+      - uses: actions/download-artifact@v4
         with:
-          files: target/release/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
