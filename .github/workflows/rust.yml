@@ -1,4 +1,4 @@
-name: Rust
+name: Rust CI
 
 on:
   push:
@@ -10,13 +10,30 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  lint-and-test:
+    name: Check, Lint & Test
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo Dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: Check Format
+        run: cargo fmt --all --check
+
+      - name: Run Clippy Linter
+        run: cargo clippy -- -D warnings
+
+      - name: Build Project
+        run: cargo build --verbose
+
+      - name: Run Tests
+        run: cargo test --verbose
