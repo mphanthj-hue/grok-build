@@ -681,6 +681,7 @@ impl ToolRegistryBuilder {
         b.register::<grok_build::WebSearchTool>();
         b.register_with_params::<grok_build::WebFetchTool, grok_build::web_fetch::WebFetchParams>();
         b.register::<grok_build::ObscuraTool>();
+        b.register::<grok_build::ObscuraScrapeTool>();
         b.register::<grok_build::LspTool>();
         b.register::<grok_build::ImageGenTool>();
         b.register::<grok_build::ImageEditTool>();
@@ -1051,7 +1052,7 @@ impl ToolRegistryBuilder {
         }
         // ObscuraTool uses the shared Terminal resource — no client injection needed.
         // Terminal is already inserted above at line ~970. The tool calls
-        // `obscura browse <url>` via terminal.run(). Availability is gated by
+        // `obscura fetch --dump markdown <url>` via terminal.run(). Availability is gated by
         // `build_obscura_config()` which checks for the binary in PATH.
         let concise_ns = crate::types::tool::ToolNamespace::GrokBuildConcise.to_string();
         let has_concise_tools = config.tools.iter().any(|tc| {

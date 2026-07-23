@@ -466,7 +466,7 @@ impl AgentBuilder {
     /// Set the obscura (headless browser) configuration.
     ///
     /// When `Enabled`, the `browser` tool is registered and calls
-    /// `obscura browse <url>` via the shared Terminal backend.
+    /// `obscura fetch --dump markdown <url>` via the shared Terminal backend.
     /// When `Disabled` (default), the tool is not registered.
     /// Feature-flagged via binary presence in PATH and/or
     /// `GROK_DISABLE_BROWSER` env var.
@@ -740,10 +740,12 @@ impl AgentBuilder {
                     .tools
                     .push((&memory::get_tool::MemoryGetImpl).into());
             }
-            if self.web_search_config.is_enabled() {
-                use xai_grok_tools::implementations::grok_build;
-                tool_config.tools.push((&grok_build::WebSearchTool).into());
-            }
+            // FREE EDITION: WebSearchTool is REMOVED (uses paid xAI Responses API).
+            // Replaced by native DeepResearchTool (free DuckDuckGo + Wikipedia + HN + News).
+            // if self.web_search_config.is_enabled() {
+            //     use xai_grok_tools::implementations::grok_build;
+            //     tool_config.tools.push((&grok_build::WebSearchTool).into());
+            // }
             if self.web_fetch_config.is_enabled() {
                 use xai_grok_tools::implementations::grok_build;
                 tool_config.tools.push((&grok_build::WebFetchTool).into());
@@ -751,30 +753,33 @@ impl AgentBuilder {
             if self.obscura_config.is_enabled() {
                 use xai_grok_tools::implementations::grok_build;
                 tool_config.tools.push((&grok_build::ObscuraTool).into());
+                tool_config.tools.push((&grok_build::ObscuraScrapeTool).into());
             }
             if self.lsp.is_some() {
                 tool_config
                     .tools
                     .push((&xai_grok_tools::implementations::grok_build::LspTool).into());
             }
-            if self.image_gen_config.image_gen_enabled() {
-                tool_config
-                    .tools
-                    .push((&xai_grok_tools::implementations::grok_build::ImageGenTool).into());
-            }
-            if self.image_gen_config.image_edit_enabled() {
-                tool_config
-                    .tools
-                    .push((&xai_grok_tools::implementations::grok_build::ImageEditTool).into());
-            }
-            if self.video_gen_config.is_enabled() {
-                tool_config
-                    .tools
-                    .push((&xai_grok_tools::implementations::grok_build::ImageToVideoTool).into());
-                tool_config.tools.push(
-                    (&xai_grok_tools::implementations::grok_build::ReferenceToVideoTool).into(),
-                );
-            }
+            // FREE EDITION: ImageGen/Edit/Video are REMOVED (paid xAI Imagine API,
+            // and this PC has no GPU for local Stable Diffusion).
+            // if self.image_gen_config.image_gen_enabled() {
+            //     tool_config
+            //         .tools
+            //         .push((&xai_grok_tools::implementations::grok_build::ImageGenTool).into());
+            // }
+            // if self.image_gen_config.image_edit_enabled() {
+            //     tool_config
+            //         .tools
+            //         .push((&xai_grok_tools::implementations::grok_build::ImageEditTool).into());
+            // }
+            // if self.video_gen_config.is_enabled() {
+            //     tool_config
+            //         .tools
+            //         .push((&xai_grok_tools::implementations::grok_build::ImageToVideoTool).into());
+            //     tool_config.tools.push(
+            //         (&xai_grok_tools::implementations::grok_build::ReferenceToVideoTool).into(),
+            //     );
+            // }
             let has_write_tool = tool_config
                 .tools
                 .iter()

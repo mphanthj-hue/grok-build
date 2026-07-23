@@ -65,7 +65,10 @@ pub use video_gen::{
     REFERENCE_TO_VIDEO_TOOL_NAME, ReferenceToVideoTool, imagine_video_instruction,
     imagine_video_usage_message,
 };
-pub use obscura::{ObscuraConfig, ObscuraTool};
+pub use obscura::{
+    DumpMode, ObscuraConfig, ObscuraFetchTool, ObscuraInput, ObscuraScrapeInput,
+    ObscuraScrapeTool, ObscuraTool, ScrapeFormat, WaitUntil,
+};
 pub use web_fetch::{WebFetchClient, WebFetchConfig, WebFetchParams, WebFetchTool};
 pub use web_search::WebSearchTool;
 pub use workflow::{WORKFLOW_TOOL_NAME, WorkflowTool};

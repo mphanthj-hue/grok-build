@@ -96,8 +96,10 @@ pub enum ToolInput {
     SchedulerList(crate::implementations::grok_build::scheduler::list::SchedulerListInput),
     UpdateGoal(UpdateGoalInput),
     Workflow(crate::implementations::grok_build::workflow::WorkflowToolInput),
-    /// Obscura headless browser input.
+    /// Obscura headless browser fetch input.
     Obscura(crate::implementations::grok_build::obscura::ObscuraInput),
+    /// Obscura headless browser scrape input.
+    ObscuraScrape(crate::implementations::grok_build::obscura::ObscuraScrapeInput),
     /// Dynamic input for runtime-registered tools (MCP, etc.)
     Dynamic(serde_json::Value),
 }
