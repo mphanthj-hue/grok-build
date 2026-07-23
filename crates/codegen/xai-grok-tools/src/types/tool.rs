@@ -101,6 +101,7 @@ pub enum ToolKind {
     Monitor,
     GoalUpdate,
     Workflow,
+    Browser,
     #[serde(other)]
     Other,
 }

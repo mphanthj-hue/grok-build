@@ -473,6 +473,7 @@ impl SessionContextFactory for WorkspaceSessionContextFactory {
             memory_backend: None,
             web_search_config,
             web_fetch_config: build_web_fetch_config(),
+            obscura_config: build_obscura_config(),
             lsp: None,
             image_gen_config,
             video_gen_config,
@@ -520,6 +521,26 @@ fn build_proxy_headers(base_url: &str) -> indexmap::IndexMap<String, String> {
     }
     headers
 }
+/// Build obscura (headless browser) config.
+///
+/// Enabled when the `obscura` binary is found in PATH, unless
+/// `GROK_DISABLE_BROWSER=1` is set.
+fn build_obscura_config(
+) -> xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig {
+    use xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig;
+    if std::env::var("GROK_DISABLE_BROWSER").is_ok_and(|v| v == "1") {
+        return ObscuraConfig::Disabled;
+    }
+    if which::which("obscura").is_ok() {
+        ObscuraConfig::Enabled {
+            binary_path: "obscura".to_string(),
+            timeout_secs: 30,
+        }
+    } else {
+        ObscuraConfig::Disabled
+    }
+}
+
 /// Build web fetch config. Enabled with default params unless
 /// `GROK_DISABLE_WEB_FETCH=1` is set.
 fn build_web_fetch_config() -> xai_grok_tools::implementations::grok_build::web_fetch::WebFetchConfig
@@ -596,6 +617,7 @@ pub mod test_support {
                 memory_backend: None,
                 web_search_config: Default::default(),
                 web_fetch_config: Default::default(),
+                obscura_config: Default::default(),
                 lsp: None,
                 image_gen_config: Default::default(),
                 video_gen_config: Default::default(),

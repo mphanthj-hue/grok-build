@@ -257,6 +257,9 @@ pub struct SessionContext {
     /// is created and injected into `Resources` so the `web_fetch` tool can
     /// fetch URLs. When `Disabled` (default), the tool is not registered.
     pub web_fetch_config: crate::implementations::grok_build::web_fetch::WebFetchConfig,
+    /// Obscura headless browser config. When `Enabled`, ObscuraTool is registered.
+    /// The tool uses the shared Terminal resource to spawn the `obscura` binary.
+    pub obscura_config: crate::implementations::grok_build::obscura::ObscuraConfig,
     /// Optional shared LSP handle — created once by the caller (shell),
     /// passed to every session. Same pattern as `fs` and `backend`.
     /// When `Some`, inserted into `Resources` so `LspTool` can use it.
@@ -677,6 +680,7 @@ impl ToolRegistryBuilder {
         b.register::<grok_build::TaskTool>();
         b.register::<grok_build::WebSearchTool>();
         b.register_with_params::<grok_build::WebFetchTool, grok_build::web_fetch::WebFetchParams>();
+        b.register::<grok_build::ObscuraTool>();
         b.register::<grok_build::LspTool>();
         b.register::<grok_build::ImageGenTool>();
         b.register::<grok_build::ImageEditTool>();
@@ -1045,6 +1049,10 @@ impl ToolRegistryBuilder {
                 }
             }
         }
+        // ObscuraTool uses the shared Terminal resource — no client injection needed.
+        // Terminal is already inserted above at line ~970. The tool calls
+        // `obscura browse <url>` via terminal.run(). Availability is gated by
+        // `build_obscura_config()` which checks for the binary in PATH.
         let concise_ns = crate::types::tool::ToolNamespace::GrokBuildConcise.to_string();
         let has_concise_tools = config.tools.iter().any(|tc| {
             self.tools
@@ -2043,6 +2051,8 @@ mod tests {
             web_search_config: crate::implementations::web_search::WebSearchConfig::default(),
             web_fetch_config:
                 crate::implementations::grok_build::web_fetch::WebFetchConfig::default(),
+            obscura_config:
+                crate::implementations::grok_build::obscura::ObscuraConfig::default(),
             lsp: None,
             image_gen_config:
                 crate::implementations::grok_build::image_gen::ImageGenConfig::default(),

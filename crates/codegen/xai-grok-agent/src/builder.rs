@@ -92,6 +92,7 @@ pub struct AgentBuilder {
     /// registered as local Function tools.
     backend_search: bool,
     web_fetch_config: xai_grok_tools::implementations::grok_build::web_fetch::WebFetchConfig,
+    obscura_config: xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig,
     lsp: Option<std::sync::Arc<dyn xai_grok_tools::implementations::lsp::LspBackend>>,
     image_gen_config: xai_grok_tools::implementations::grok_build::image_gen::ImageGenConfig,
     video_gen_config: xai_grok_tools::implementations::grok_build::video_gen::VideoGenConfig,
@@ -233,6 +234,7 @@ impl AgentBuilder {
             web_search_config: Default::default(),
             backend_search: false,
             web_fetch_config: Default::default(),
+            obscura_config: Default::default(),
             lsp: None,
             image_gen_config: Default::default(),
             video_gen_config: Default::default(),
@@ -461,6 +463,21 @@ impl AgentBuilder {
         self.web_fetch_config = config;
         self
     }
+    /// Set the obscura (headless browser) configuration.
+    ///
+    /// When `Enabled`, the `browser` tool is registered and calls
+    /// `obscura browse <url>` via the shared Terminal backend.
+    /// When `Disabled` (default), the tool is not registered.
+    /// Feature-flagged via binary presence in PATH and/or
+    /// `GROK_DISABLE_BROWSER` env var.
+    pub fn with_obscura_config(
+        mut self,
+        config: xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig,
+    ) -> Self {
+        self.obscura_config = config;
+        self
+    }
+
     pub fn with_lsp(
         mut self,
         handle: std::sync::Arc<dyn xai_grok_tools::implementations::lsp::LspBackend>,
@@ -730,6 +747,10 @@ impl AgentBuilder {
             if self.web_fetch_config.is_enabled() {
                 use xai_grok_tools::implementations::grok_build;
                 tool_config.tools.push((&grok_build::WebFetchTool).into());
+            }
+            if self.obscura_config.is_enabled() {
+                use xai_grok_tools::implementations::grok_build;
+                tool_config.tools.push((&grok_build::ObscuraTool).into());
             }
             if self.lsp.is_some() {
                 tool_config
@@ -1043,6 +1064,7 @@ impl AgentBuilder {
                 memory_backend: self.memory_backend,
                 web_search_config: self.web_search_config,
                 web_fetch_config: self.web_fetch_config,
+                obscura_config: self.obscura_config,
                 lsp: self.lsp,
                 image_gen_config: self.image_gen_config,
                 video_gen_config: self.video_gen_config,

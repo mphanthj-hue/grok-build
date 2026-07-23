@@ -127,6 +127,7 @@ async fn test_agent_from_config(
         memory_backend: None,
         web_search_config: Default::default(),
         web_fetch_config: Default::default(),
+        obscura_config: Default::default(),
         lsp: None,
         image_gen_config: Default::default(),
         video_gen_config: Default::default(),

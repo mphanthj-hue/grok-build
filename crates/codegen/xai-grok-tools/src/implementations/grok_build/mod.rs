@@ -31,6 +31,7 @@ pub mod todo;
 pub mod update_goal;
 pub mod video_gen;
 pub mod web_fetch;
+pub mod obscura;
 pub mod web_search;
 pub mod workflow;
 pub use ask_user_question::AskUserQuestionTool;
@@ -64,6 +65,7 @@ pub use video_gen::{
     REFERENCE_TO_VIDEO_TOOL_NAME, ReferenceToVideoTool, imagine_video_instruction,
     imagine_video_usage_message,
 };
+pub use obscura::{ObscuraConfig, ObscuraTool};
 pub use web_fetch::{WebFetchClient, WebFetchConfig, WebFetchParams, WebFetchTool};
 pub use web_search::WebSearchTool;
 pub use workflow::{WORKFLOW_TOOL_NAME, WorkflowTool};

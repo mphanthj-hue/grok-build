@@ -69,6 +69,7 @@ impl ToolKind {
             ToolKind::Monitor => "Monitor",
             ToolKind::GoalUpdate => "Update Goal",
             ToolKind::Workflow => "Workflow",
+            ToolKind::Browser => "Browser",
             ToolKind::Other => "Tool",
         }
     }
@@ -87,6 +88,7 @@ impl ToolKind {
             | ToolKind::MemoryGet
             | ToolKind::WebSearch
             | ToolKind::WebFetch
+            | ToolKind::Browser
             | ToolKind::EnterPlan
             | ToolKind::ExitPlan
             | ToolKind::AskUser => true,

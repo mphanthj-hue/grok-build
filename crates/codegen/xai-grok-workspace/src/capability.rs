@@ -104,6 +104,7 @@ pub(crate) const ALL_TOOL_KINDS: &[ToolKind] = &[
     ToolKind::Monitor,
     ToolKind::GoalUpdate,
     ToolKind::Workflow,
+    ToolKind::Browser,
     ToolKind::Other,
 ];
 
@@ -136,7 +137,7 @@ pub(crate) fn kind_allowed(mode: CapabilityMode, kind: ToolKind) -> bool {
         }
 
         // Search class.
-        Search | WebSearch | WebFetch => {
+        Search | WebSearch | WebFetch | Browser => {
             matches!(mode, M::ReadOnly | M::ReadWrite | M::Execute)
         }
 
