@@ -864,6 +864,74 @@ impl SessionActor {
                 }
                 ok_end_turn(0, None)
             }
+            BuiltinAction::AutoParallel { task } => {
+                if task.is_empty() {
+                    self.send_host_turn_slash_command_output(
+                        "Usage: /auto-parallel <task>\n\
+                         Automatic parallel task orchestrator — phân tích task, split thành \
+                         subtasks độc lập, dispatch song song, tổng hợp kết quả, kiểm tra conflict.",
+                    )
+                    .await;
+                    return ok_end_turn(0, None);
+                }
+                let resolved = match crate::session::workflow::registry::resolve_by_name(
+                    "auto-parallel",
+                    None,
+                ) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        self.send_host_turn_slash_command_output(&format!(
+                            "auto-parallel workflow unavailable: {e}"
+                        ))
+                        .await;
+                        return ok_end_turn(0, None);
+                    }
+                };
+                let spec = crate::session::workflow::manager::LaunchSpec {
+                    objective: task.clone(),
+                    args: serde_json::json!({ "task": task }),
+                    agent_budget: None,
+                    resume_run_id: None,
+                };
+                let launched = self.workflow_manager.lock().await.launch(resolved, spec);
+                match launched {
+                    Ok((run_id, outcome_rx)) => {
+                        let (display, objective) = self
+                            .workflow_tracker()
+                            .await
+                            .lock()
+                            .get(&run_id)
+                            .map(|r| (r.name.clone(), r.objective.clone()))
+                            .unwrap_or_else(|| ("auto-parallel".to_string(), String::new()));
+                        self.push_workflow_launch_reminder(
+                            &display,
+                            &run_id,
+                            &objective,
+                            &format!("/auto-parallel {objective}"),
+                            false,
+                        );
+                        self.send_host_turn_slash_command_output(&format!(
+                            "Auto-parallel '{display}' started in the background. \
+                             Phân tích task → dispatch {} subagents song song → tổng hợp kết quả. \
+                             Use /workflows to follow progress.",
+                            crate::session::workflow::manager::WORKFLOW_DEFAULT_AGENT_BUDGET,
+                        ))
+                        .await;
+                        tokio::spawn(async move {
+                            if let Ok(outcome) = outcome_rx.await {
+                                tracing::info!(run_id, ?outcome, "auto-parallel finished");
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        self.send_host_turn_slash_command_output(&format!(
+                            "Could not start auto-parallel: {e}"
+                        ))
+                        .await;
+                    }
+                }
+                ok_end_turn(0, None)
+            }
             BuiltinAction::WorkflowManage { run_id, op } => {
                 let msg = self.manage_workflow_run(&run_id, &op).await;
                 self.send_host_turn_slash_command_output(&msg).await;

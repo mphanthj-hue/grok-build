@@ -246,6 +246,16 @@ pub(super) const BUILTIN_COMMANDS: &[BuiltinCommand] = &[
         },
     },
     BuiltinCommand {
+        name: "auto-parallel",
+        description: "Automatic parallel task orchestrator — phân tích task, split subtasks, dispatch song song, tổng hợp kết quả",
+        argument_hint: Some("<task>"),
+        aliases: &[],
+        gate: BuiltinGate::WorkflowLaunches,
+        resolve: |args| BuiltinAction::AutoParallel {
+            task: args.trim().to_string(),
+        },
+    },
+    BuiltinCommand {
         name: "workflow",
         description: "Launch a saved workflow, or manage a run (pause, resume, stop, save)",
         argument_hint: Some("<name> [args] | pause|resume|stop|save [name]"),
@@ -880,6 +890,9 @@ pub(super) enum BuiltinAction {
     DeepResearch {
         query: String,
     },
+    AutoParallel {
+        task: String,
+    },
     WorkflowManage {
         run_id: String,
         op: String,
@@ -922,6 +935,7 @@ impl BuiltinAction {
             | BuiltinAction::GoalResume
             | BuiltinAction::GoalClear => "goal",
             BuiltinAction::DeepResearch { .. } => "deep-research",
+            BuiltinAction::AutoParallel { .. } => "auto-parallel",
             BuiltinAction::WorkflowManage { .. } => "workflow",
             BuiltinAction::WorkflowLaunch { .. } => "workflow",
         }
@@ -958,6 +972,7 @@ impl BuiltinAction {
             | BuiltinAction::GoalResume
             | BuiltinAction::GoalClear => false,
             BuiltinAction::DeepResearch { .. } => true,
+            BuiltinAction::AutoParallel { task } => !task.is_empty(),
             BuiltinAction::WorkflowManage { .. } => true,
             BuiltinAction::WorkflowLaunch { input, .. } => !input.is_empty(),
         }
