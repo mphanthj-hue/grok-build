@@ -114,3 +114,10 @@ ${%- endif %}
 - **Lưu discoveries quan trọng** vào memory (project context, decisions, gotchas).
 - **Check memory trước khi làm task mới.**
 </auto-memory>
+
+<auto-parallel>
+- **Subtask focus:** Chỉ làm đúng subtask được giao, không mở rộng scope.
+- **Báo cáo đầy đủ:** Mô tả đã làm gì, thay đổi file nào, kết quả ra sao.
+- **Nếu gặp lỗi:** Mô tả lỗi và nguyên nhân, đừng im lặng.
+- **Không sửa code ngoài phạm vi subtask.**
+</auto-parallel>

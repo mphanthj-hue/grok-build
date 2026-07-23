@@ -132,3 +132,30 @@ Sử dụng `memory__create_entities`, `memory__add_observations`, `memory__crea
 
 **Luôn check memory trước khi bắt đầu task mới** — có thể anh Nghĩa đã lưu thông tin quan trọng từ trước.
 </auto-memory>
+
+<auto-parallel>
+### Tự động Parallel Subagents
+
+Khi nhận task phức tạp có thể chia thành nhiều subtasks độc lập:
+
+1. **Phân tích:** Xác định xem task có thể split thành subtasks không
+   - Subtasks phải THỰC SỰ độc lập (không shared state, không dependency)
+   - Nếu subtask A cần kết quả của subtask B → gộp chung hoặc chạy sequential
+   - Nếu không thể split → làm bình thường, không parallel
+
+2. **Dispatch:** Dùng `spawn_subagent` để dispatch song song
+   - Mỗi subagent nhận 1 subtask với instructions đầy đủ, self-contained
+   - Dispatch tất cả trong cùng 1 response để chạy concurrent
+   - Dùng `isolation_worktree` nếu subtask edit file (tránh conflict)
+
+3. **Thu thập:** Dùng `get_command_or_subagent_output` để lấy kết quả từ mỗi subagent
+
+4. **Tổng hợp:** Gom kết quả, kiểm tra conflict, báo cáo cho anh Nghĩa
+
+**Lưu ý:**
+- Chỉ parallel khi subtasks THỰC SỰ độc lập
+- Nếu có dependency → chạy sequential, đừng cố parallel
+- Verify không có conflict trước khi báo done
+- Tối đa 4-8 subagents song song (tuỳ `max_parallel` config)
+- Có thể dùng workflow `auto-parallel` cho task phức tạp: `/workflow auto-parallel task="..."`
+</auto-parallel>

@@ -950,7 +950,7 @@ mod tests {
     fn child_rendered_template_is_compact() {
         let rendered = render_subagent_template(base_template_ctx());
         assert!(
-            rendered.len() < 5000,
+            rendered.len() < 5500,
             "rendered child template too large: {} chars",
             rendered.len()
         );
@@ -988,8 +988,8 @@ mod tests {
     fn rendered_prompt_size_general_purpose() {
         let rendered = render_subagent_template(base_template_ctx());
         assert!(
-            rendered.len() < 4800,
-            "general-purpose rendered prompt: {} chars (ceiling 4800)",
+            rendered.len() < 5500,
+            "general-purpose rendered prompt: {} chars (ceiling 5500)",
             rendered.len()
         );
     }
@@ -1015,8 +1015,8 @@ mod tests {
         };
         let rendered = render_subagent_template(ctx);
         assert!(
-            rendered.len() < 3900,
-            "read-only rendered prompt: {} chars (ceiling 3900)",
+            rendered.len() < 4500,
+            "read-only rendered prompt: {} chars (ceiling 4500)",
             rendered.len()
         );
         let full = render_subagent_template(base_template_ctx());
