@@ -1,5 +1,9 @@
 {
   "default": "deepseek-v4-flash-free",
   "session_summary": "deepseek-v4-flash-free",
-  "models": []
+  "models": [
+    {
+      "model": "deepseek-v4-flash-free"
+    }
+  ]
 }
