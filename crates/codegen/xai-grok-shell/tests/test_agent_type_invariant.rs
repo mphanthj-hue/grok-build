@@ -79,7 +79,7 @@ async fn test_default_model_uses_grok_build_harness() {
             .last_system_prompt()
             .expect("should have at least one inference request");
         assert!(
-            sys_prompt.contains("Grok") || sys_prompt.contains("grok"),
+            sys_prompt.contains("Cirpher") || sys_prompt.contains("Grok") || sys_prompt.contains("grok"),
             "default model should use grok-build harness\nsystem prompt preview: {}",
             &sys_prompt[..sys_prompt.len().min(500)]
         );
@@ -157,9 +157,9 @@ async fn test_session_resume_preserves_harness() {
             .last_system_prompt()
             .expect("should have captured resumed system prompt");
         let original_has_grok =
-            original_sys_prompt.contains("Grok") || original_sys_prompt.contains("grok");
+            original_sys_prompt.contains("Cirpher") || original_sys_prompt.contains("Grok") || original_sys_prompt.contains("grok");
         let resumed_has_grok =
-            resumed_sys_prompt.contains("Grok") || resumed_sys_prompt.contains("grok");
+            resumed_sys_prompt.contains("Cirpher") || resumed_sys_prompt.contains("Grok") || resumed_sys_prompt.contains("grok");
         assert_eq!(
             original_has_grok,
             resumed_has_grok,
@@ -202,7 +202,7 @@ async fn test_model_without_agent_type_defaults_to_grok_build() {
                 .last_system_prompt()
                 .expect("should have at least one inference request");
             assert!(
-            sys_prompt.contains("Grok") || sys_prompt.contains("grok"),
+            sys_prompt.contains("Cirpher") || sys_prompt.contains("Grok") || sys_prompt.contains("grok"),
             "model without agent_type should default to grok-build harness\nsystem prompt preview: {}",
             &sys_prompt[..sys_prompt.len().min(500)]
         );
@@ -242,7 +242,7 @@ async fn test_grok_agent_env_overrides_model_agent_type() {
                 .last_system_prompt()
                 .expect("should have inference request");
             assert!(
-            sys_prompt.contains("Grok") || sys_prompt.contains("grok"),
+            sys_prompt.contains("Cirpher") || sys_prompt.contains("Grok") || sys_prompt.contains("grok"),
             "GROK_AGENT=grok-build should override catalog model agent_type\nsystem prompt preview: {}",
             &sys_prompt[..sys_prompt.len().min(500)]
         );

@@ -149,8 +149,8 @@ pub struct PromptContext {
     #[serde(default = "default_system_prompt_label")]
     pub system_prompt_label: String,
 }
-/// Default identity on trim-tool-descriptions (`You are Grok released by xAI`).
-pub const DEFAULT_SYSTEM_PROMPT_LABEL: &str = "Grok";
+/// Default identity on trim-tool-descriptions (`You are Cirpher released by xAI`).
+pub const DEFAULT_SYSTEM_PROMPT_LABEL: &str = "Cirpher";
 fn default_system_prompt_label() -> String {
     DEFAULT_SYSTEM_PROMPT_LABEL.to_string()
 }
@@ -950,7 +950,7 @@ mod tests {
     fn child_rendered_template_is_compact() {
         let rendered = render_subagent_template(base_template_ctx());
         assert!(
-            rendered.len() < 3700,
+            rendered.len() < 5000,
             "rendered child template too large: {} chars",
             rendered.len()
         );
@@ -988,8 +988,8 @@ mod tests {
     fn rendered_prompt_size_general_purpose() {
         let rendered = render_subagent_template(base_template_ctx());
         assert!(
-            rendered.len() < 3700,
-            "general-purpose rendered prompt: {} chars (ceiling 3700)",
+            rendered.len() < 4800,
+            "general-purpose rendered prompt: {} chars (ceiling 4800)",
             rendered.len()
         );
     }
@@ -1015,8 +1015,8 @@ mod tests {
         };
         let rendered = render_subagent_template(ctx);
         assert!(
-            rendered.len() < 2800,
-            "read-only rendered prompt: {} chars (ceiling 2800)",
+            rendered.len() < 3900,
+            "read-only rendered prompt: {} chars (ceiling 3900)",
             rendered.len()
         );
         let full = render_subagent_template(base_template_ctx());

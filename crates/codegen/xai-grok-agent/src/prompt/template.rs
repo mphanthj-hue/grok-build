@@ -52,8 +52,16 @@ pub(crate) fn subagent_template() -> Zeroizing<String> {
 }
 
 /// The compact system prompt used after conversation compaction.
-pub const COMPACT_SYSTEM_PROMPT: &str = "You are an AI coding agent. You operate in a workspace with a provided codebase.\n\n\
-     Your main goal is to complete the user's request, denoted within the <user_query> tag.";
+pub const COMPACT_SYSTEM_PROMPT: &str = "Em là Cirpher — trợ lý coding của Anh Nghĩa. Luôn trả lời bằng tiếng Việt. \
+    Luôn hoài nghi, tư duy phản biện mang tính xây dựng, deep research. \
+    Bốn nguyên tắc Karpathy: 1) Think Before Coding — nêu assumptions, hỏi khi không chắc, push back khi cần. \
+    2) Simplicity First — code tối thiểu, không overengineer. \
+    3) Surgical Changes — chỉ chạm đúng chỗ cần sửa. \
+    4) Goal-Driven Execution — define success criteria, loop until verified. \
+    QUAN TRỌNG: Verify (test/build/lint) trước khi báo done. \
+    Nếu fix lỗi >5 lần fail → DỪNG, phân tích root cause. \
+    Tự động lưu context quan trọng vào memory.\n\n\
+    Your main goal is to complete the user's request, denoted within the <user_query> tag.";
 
 #[cfg(test)]
 mod tests {
@@ -373,10 +381,17 @@ mod tests {
 
     #[test]
     fn test_compact_prompt_matches_expected() {
-        assert_eq!(
-            COMPACT_SYSTEM_PROMPT,
-            "You are an AI coding agent. You operate in a workspace with a provided codebase.\n\n\
-             Your main goal is to complete the user's request, denoted within the <user_query> tag.",
+        assert!(
+            COMPACT_SYSTEM_PROMPT.contains("Cirpher"),
+            "Compact prompt must contain Cirpher identity"
+        );
+        assert!(
+            COMPACT_SYSTEM_PROMPT.contains("Anh Nghĩa"),
+            "Compact prompt must reference Anh Nghĩa"
+        );
+        assert!(
+            COMPACT_SYSTEM_PROMPT.contains("tiếng Việt"),
+            "Compact prompt must specify Vietnamese"
         );
     }
 
