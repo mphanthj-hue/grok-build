@@ -1,0 +1,46 @@
+[package]
+license = "Apache-2.0"
+name = "xai-grok-init"
+version = "0.1.0"
+edition.workspace = true
+description = "Scan codebase and generate AGENTS.md project instructions"
+
+[features]
+default = []
+
+[dependencies]
+# Async runtime
+tokio = { workspace = true, features = ["fs"] }
+
+# Logging
+tracing = { workspace = true }
+
+# Path utilities
+dunce = { workspace = true }
+xai-grok-paths = { path = "../xai-grok-paths" }
+
+# Git repo detection
+git2 = "0.20"
+
+# Gitignore-aware directory walking
+ignore = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Data structures
+indexmap = { workspace = true }
+
+# Shell command parsing
+# Use crate's own simple parser; no extra dep needed
+
+# TOML parsing (Cargo.toml, pyproject.toml)
+toml = { workspace = true }
+
+[lints]
+workspace = true
