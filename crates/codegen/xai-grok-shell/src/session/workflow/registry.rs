@@ -21,6 +21,10 @@ pub(crate) const BUILTIN_WORKFLOWS: &[BuiltinWorkflow] = &[
         name: "auto-parallel",
         script: include_str!("../workflows/auto_parallel.rhai"),
     },
+    BuiltinWorkflow {
+        name: "init-guide",
+        script: include_str!("../workflows/init_guide.rhai"),
+    },
 ];
 
 pub(crate) struct ResolvedWorkflow {

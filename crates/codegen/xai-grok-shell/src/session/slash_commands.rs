@@ -301,6 +301,7 @@ pub(super) const BUILTIN_COMMANDS: &[BuiltinCommand] = &[
             BuiltinAction::Init {
                 update_only: args_lower.contains("--update-only") || args_lower.contains("-u"),
                 dry_run: args_lower.contains("--dry-run") || args_lower.contains("-n"),
+                guide: args_lower.contains("--guide") || args_lower.contains("-g"),
             }
         },
     },
@@ -878,6 +879,7 @@ pub(super) enum BuiltinAction {
     Init {
         update_only: bool,
         dry_run: bool,
+        guide: bool,
     },
     GoalSet {
         objective: String,
@@ -928,7 +930,9 @@ impl BuiltinAction {
             BuiltinAction::Feedback { .. } => "feedback",
             BuiltinAction::MemoryBrowse => "memory",
             BuiltinAction::MemoryToggle { .. } => "memory",
-            BuiltinAction::Init { .. } => "init",
+            BuiltinAction::Init { guide, .. } => {
+                if *guide { "init-guide" } else { "init" }
+            }
             BuiltinAction::GoalSet { .. }
             | BuiltinAction::GoalStatus
             | BuiltinAction::GoalPause
@@ -965,7 +969,7 @@ impl BuiltinAction {
             BuiltinAction::Feedback { text } => !text.is_empty(),
             BuiltinAction::MemoryBrowse => false,
             BuiltinAction::MemoryToggle { .. } => true,
-            BuiltinAction::Init { .. } => true,            
+            BuiltinAction::Init { guide, .. } => *guide,            
             BuiltinAction::GoalSet { .. } => true,
             BuiltinAction::GoalStatus
             | BuiltinAction::GoalPause

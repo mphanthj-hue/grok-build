@@ -1,6 +1,6 @@
 //! # xai-grok-init
 //!
-//! Native Rust codebase scanner and AGENTS.md generator for Grok Build's `/init` command.
+//! Native Rust codebase scanner and `.grok/` project scaffolder for Grok Build's `/init` command.
 //!
 //! ## Flow
 //!
@@ -8,27 +8,31 @@
 //!    README, CI configs, and existing instruction files.
 //! 2. **`analyzer`** — Detects languages, build systems, test frameworks, linters,
 //!    and infers conventions.
-//! 3. **`renderer`** — Generates AGENTS.md markdown from the analysis data.
-//! 4. **`export`** — Writes the file (or returns a preview) and manages `.gitignore`.
+//! 3. **`renderer`** — Generates `.grok/AGENTS.md` markdown and `.grok/config.toml`.
+//! 4. **`export`** — Writes `.grok/` files and manages `.gitignore`.
+//! 5. **`git`** — Git repo initialization helpers.
 
 pub mod analyzer;
 pub mod export;
+pub mod git;
 pub mod renderer;
 pub mod scanner;
 
 use std::path::Path;
 
 use anyhow::Result;
-pub use scanner::ScannedProject;
 pub use analyzer::{Analysis, BuildSystem, DetectedLanguage, LinterFormatter, TestFramework};
+pub use scanner::ScannedProject;
 
 /// Options controlling what `/init` does.
 #[derive(Debug, Clone)]
 pub struct InitOptions {
-    /// If true, always update existing AGENTS.md rather than creating a new one.
+    /// If true, always update existing files rather than creating new ones.
     pub update_only: bool,
     /// If true, show the generated content without writing.
     pub dry_run: bool,
+    /// If true, launch the interactive guide workflow instead of quick scan.
+    pub guide: bool,
 }
 
 impl Default for InitOptions {
@@ -36,6 +40,7 @@ impl Default for InitOptions {
         Self {
             update_only: false,
             dry_run: false,
+            guide: false,
         }
     }
 }
@@ -43,26 +48,27 @@ impl Default for InitOptions {
 /// Result returned to the user after a successful init.
 #[derive(Debug)]
 pub struct InitReport {
-    /// Path to the written file (empty for dry-run).
-    pub written_to: Option<String>,
-    /// Full markdown preview.
+    /// Path to the `.grok/` directory (empty for dry-run).
+    pub grok_dir: Option<String>,
+    /// Path to `.grok/AGENTS.md` if generated.
+    pub agents_md_path: Option<String>,
+    /// Path to `.grok/config.toml` if generated.
+    pub config_toml_path: Option<String>,
+    /// Full AGENTS.md preview.
     pub preview: String,
-    /// Whether the file was newly created (vs updated).
-    pub created: bool,
     /// Number of conventions/rules discovered.
     pub rule_count: usize,
-    /// Whether AGENTS.local.md was added to .gitignore.
+    /// Whether `.gitignore` was updated.
     pub gitignore_updated: bool,
+    /// Whether git repo was initialized.
+    pub git_inited: bool,
     /// Human-readable summary line.
     pub summary: String,
 }
 
-/// Main entry point: scan, analyze, generate, and write AGENTS.md.
+/// Main entry point: scan, analyze, generate, and write `.grok/` files.
 ///
 /// Called from `slash_exec.rs` when the user runs `/init`.
-///
-/// Returns a user-facing report string that the shell sends back as
-/// slash-command output.
 pub async fn analyze_and_generate(cwd: &Path, opts: InitOptions) -> Result<InitReport> {
     // 1. SCAN
     let project = scanner::scan_project(cwd).await?;
@@ -71,73 +77,86 @@ pub async fn analyze_and_generate(cwd: &Path, opts: InitOptions) -> Result<InitR
     let analysis = analyzer::analyze(&project).await?;
 
     // 3. RENDER
-    let preview = renderer::generate_agents_md(&analysis, &project);
+    let agents_md = renderer::generate_grok_agents_md(&analysis, &project);
+    let config_toml = renderer::generate_grok_config(&analysis, &project);
 
     // 4. CHECK EXISTING
-    let existing_path = project.root.join("AGENTS.md");
-    let exists = existing_path.exists();
+    let grok_dir = project.root.join(".grok");
+    let agents_md_path = grok_dir.join("AGENTS.md");
+    let config_toml_path = grok_dir.join("config.toml");
+    let grok_dir_exists = grok_dir.exists();
+    let agents_exists = agents_md_path.exists();
+    let config_exists = config_toml_path.exists();
 
-    // If update_only and no existing file, warn
-    if opts.update_only && !exists {
+    // If update_only and nothing exists, warn
+    if opts.update_only && !agents_exists && !config_exists {
         return Ok(InitReport {
-            written_to: None,
-            preview: preview.clone(),
-            created: false,
+            grok_dir: None,
+            agents_md_path: None,
+            config_toml_path: None,
+            preview: agents_md.clone(),
             rule_count: analysis.conventions.len(),
             gitignore_updated: false,
-            summary: "No existing AGENTS.md found. Run without --update to create one.".into(),
+            git_inited: false,
+            summary: "No existing `.grok/` found. Run without --update-only to create one.".into(),
         });
     }
 
     // 5. EXPORT (write if not dry_run)
     if opts.dry_run {
         return Ok(InitReport {
-            written_to: None,
-            preview,
-            created: !exists,
+            grok_dir: None,
+            agents_md_path: None,
+            config_toml_path: None,
+            preview: agents_md,
             rule_count: analysis.conventions.len(),
             gitignore_updated: false,
+            git_inited: false,
             summary: format!(
-                "Dry-run complete. Would {} AGENTS.md with {} conventions.",
-                if exists { "update" } else { "create" },
+                "Dry-run complete. Would create/update `.grok/` with {} conventions.",
                 analysis.conventions.len(),
             ),
         });
     }
 
-    let export_result = export::write_agents_md(&existing_path, &preview).await?;
+    // 5a. Git init if needed
+    let git_inited = git::git_init_if_needed(&project.root).await?;
 
-    // Optionally add AGENTS.local.md to .gitignore if it doesn't exist
-    let local_path = project.root.join("AGENTS.local.md");
-    let gitignore_updated = if !local_path.exists() {
-        export::add_to_gitignore(&project.root, "AGENTS.local.md").await?
-    } else {
-        false
-    };
+    // 5b. Write files
+    let export_result = export::write_grok_files(&project.root, &agents_md, &config_toml).await?;
 
-    let summary = if !exists {
+    // 5c. Add .grok/ to .gitignore
+    let gitignore_updated = export::add_to_gitignore(
+        &project.root,
+        &[".grok/", "AGENTS.local.md"],
+    )
+    .await?;
+
+    let summary = if !grok_dir_exists {
         format!(
-            "Created AGENTS.md with {} conventions. {}",
+            "Created `.grok/` with AGENTS.md ({} conventions) and config.toml. {}",
             analysis.conventions.len(),
             if gitignore_updated {
-                "Added AGENTS.local.md to .gitignore."
+                "Added `.grok/` and AGENTS.local.md to .gitignore."
             } else {
                 ""
             }
         )
     } else {
         format!(
-            "Updated AGENTS.md. Found {} conventions.",
+            "Updated `.grok/`. Found {} conventions.",
             analysis.conventions.len(),
         )
     };
 
     Ok(InitReport {
-        written_to: Some(export_result.path),
-        preview,
-        created: !exists,
+        grok_dir: Some(export_result.grok_dir),
+        agents_md_path: export_result.agents_md_path,
+        config_toml_path: export_result.config_toml_path,
+        preview: agents_md,
         rule_count: analysis.conventions.len(),
         gitignore_updated,
+        git_inited,
         summary,
     })
 }

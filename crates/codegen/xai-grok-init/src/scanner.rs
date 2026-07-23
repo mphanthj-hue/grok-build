@@ -335,7 +335,8 @@ async fn read_manifests(root: &Path) -> Vec<Manifest> {
 }
 
 fn parse_cargo_toml(content: &str, _path: &Path) -> Option<Manifest> {
-    let val: toml::Value = content.parse().ok()?;
+    // Use toml::from_str for proper TOML document parsing (toml 0.9+)
+    let val: toml::Value = toml::from_str(content).ok()?;
 
     // Simple Cargo.toml parsing — look for package name and dependencies
     let name = val
@@ -454,7 +455,7 @@ fn extract_json_deps(json: &serde_json::Value, key: &str) -> Vec<String> {
 }
 
 fn parse_pyproject_toml(content: &str) -> Option<Manifest> {
-    let val: toml::Value = content.parse().ok()?;
+    let val: toml::Value = toml::from_str(content).ok()?;
 
     // Try [project] (PEP 621) first, then [tool.poetry] (Poetry)
     let name = val

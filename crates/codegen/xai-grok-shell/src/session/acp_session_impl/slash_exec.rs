@@ -999,31 +999,93 @@ impl SessionActor {
             BuiltinAction::GoalResume => {
                 unreachable!("GoalResume is intercepted in handle_prompt")
             }
-            BuiltinAction::Init { update_only, dry_run } => {
-                let opts = xai_grok_init::InitOptions {
-                    update_only,
-                    dry_run,
-                };
-                let msg = match xai_grok_init::analyze_and_generate(
-                    std::path::Path::new(&self.session_info.cwd),
-                    opts,
-                )
-                .await
-                {
-                    Ok(report) => {
-                        let mut lines = vec![report.summary];
-                        if let Some(path) = &report.written_to {
-                            lines.push(format!("  Location: {path}"));
+            BuiltinAction::Init { update_only, dry_run, guide } => {
+                if guide {
+                    // ── Interactive mode: launch init-guide workflow ──
+                    let message = match crate::session::workflow::registry::resolve_by_name(
+                        "init-guide",
+                        None,
+                    ) {
+                        Ok(resolved) => {
+                            let spec = crate::session::workflow::manager::LaunchSpec {
+                                objective: "Interactive project initialization".to_string(),
+                                args: serde_json::json!({}),
+                                agent_budget: None,
+                                resume_run_id: None,
+                            };
+                            match self.workflow_manager.lock().await.launch(resolved, spec) {
+                                Ok((run_id, outcome_rx)) => {
+                                    let (display, objective) = self
+                                        .workflow_tracker()
+                                        .await
+                                        .lock()
+                                        .get(&run_id)
+                                        .map(|r| (r.name.clone(), r.objective.clone()))
+                                        .unwrap_or_else(|| ("init-guide".to_string(), String::new()));
+                                    self.push_workflow_launch_reminder(
+                                        &display,
+                                        &run_id,
+                                        &objective,
+                                        "/init --guide",
+                                        false,
+                                    );
+                                    tokio::spawn(async move {
+                                        if let Ok(outcome) = outcome_rx.await {
+                                            tracing::info!(run_id, ?outcome, "init-guide finished");
+                                        }
+                                    });
+                                    format!(
+                                        "Init guide '{}' started in the background. \
+                                         The agent will interview you about the project, \
+                                         scan the codebase, and set up `.grok/` configuration. \
+                                         Use /workflows to follow progress.",
+                                        display,
+                                    )
+                                }
+                                Err(e) => format!("Could not start init guide: {e}"),
+                            }
                         }
-                        if report.gitignore_updated {
-                            lines.push("  Added 'AGENTS.local.md' to .gitignore".to_string());
+                        Err(e) => format!("init-guide workflow unavailable: {e}"),
+                    };
+                    self.send_host_turn_slash_command_output(&message).await;
+                    ok_end_turn(0, None)
+                } else {
+                    // ── Quick mode: native Rust scan ──
+                    let opts = xai_grok_init::InitOptions {
+                        update_only,
+                        dry_run,
+                        guide: false,
+                    };
+                    let msg = match xai_grok_init::analyze_and_generate(
+                        std::path::Path::new(&self.session_info.cwd),
+                        opts,
+                    )
+                    .await
+                    {
+                        Ok(report) => {
+                            let mut lines = vec![report.summary];
+                            if report.git_inited {
+                                lines.push("  Git repo initialized.".to_string());
+                            }
+                            if let Some(path) = &report.grok_dir {
+                                lines.push(format!("  Directory: {path}"));
+                            }
+                            if let Some(path) = &report.agents_md_path {
+                                lines.push(format!("  AGENTS.md: {path}"));
+                            }
+                            if let Some(path) = &report.config_toml_path {
+                                lines.push(format!("  config.toml: {path}"));
+                            }
+                            if report.gitignore_updated {
+                                lines.push("  Added `.grok/` patterns to .gitignore".to_string());
+                            }
+                            lines.join("\n")
                         }
-                        lines.join("\n")
-                    }
-                    Err(e) => format!("Failed to generate AGENTS.md: {e}"),
-                };
-                self.send_host_turn_slash_command_output(&msg).await;
-                ok_end_turn(0, None)
+                        Err(e) => format!("Failed to initialize project: {e}"),
+                    };
+                    self.send_host_turn_slash_command_output(&msg).await;
+                    ok_end_turn(0, None)
+                }
             }
             BuiltinAction::GoalClear => {
                 let (respond_to, deleted) = tokio::sync::oneshot::channel();
