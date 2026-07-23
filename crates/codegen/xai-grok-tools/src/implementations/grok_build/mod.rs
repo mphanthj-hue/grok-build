@@ -31,7 +31,7 @@ pub mod todo;
 pub mod update_goal;
 pub mod video_gen;
 pub mod web_fetch;
-// pub mod deep_research;
+pub mod deep_research;
 pub mod obscura;
 pub mod web_search;
 pub mod workflow;
@@ -66,7 +66,7 @@ pub use video_gen::{
     REFERENCE_TO_VIDEO_TOOL_NAME, ReferenceToVideoTool, imagine_video_instruction,
     imagine_video_usage_message,
 };
-// pub use deep_research::DeepResearchTool;
+pub use deep_research::DeepResearchTool;
 pub use obscura::{
     DumpMode, ObscuraConfig, ObscuraFetchTool, ObscuraInput, ObscuraScrapeInput,
     ObscuraScrapeTool, ObscuraTool, ScrapeFormat, WaitUntil,

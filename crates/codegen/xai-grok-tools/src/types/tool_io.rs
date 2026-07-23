@@ -27,6 +27,7 @@ use crate::implementations::grok_build::search_replace::SearchReplaceInput;
 use crate::implementations::grok_build::todo::TodoWriteInput;
 use crate::implementations::grok_build::update_goal::UpdateGoalInput;
 use crate::implementations::grok_build::video_gen::{ImageToVideoInput, ReferenceToVideoInput};
+use crate::implementations::grok_build::deep_research::DeepResearchInput;
 use crate::implementations::grok_build::web_fetch::WebFetchInput;
 use crate::implementations::grok_build::web_search::WebSearchInput;
 use crate::implementations::lsp::LspToolInput;
@@ -101,6 +102,7 @@ pub enum ToolInput {
     /// Obscura headless browser scrape input.
     ObscuraScrape(crate::implementations::grok_build::obscura::ObscuraScrapeInput),
     /// Dynamic input for runtime-registered tools (MCP, etc.)
+    DeepResearch(DeepResearchInput),
     Dynamic(serde_json::Value),
 }
 impl ToolInput {

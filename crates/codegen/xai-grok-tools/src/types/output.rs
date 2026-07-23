@@ -664,6 +664,8 @@ pub enum ToolOutput {
     ReferenceToVideo(MediaGenOutput),
     #[from(skip)]
     ImageEdit(MediaGenOutput),
+    /// Deep research output — multi-source search + fetch + synthesis.
+    DeepResearch(crate::implementations::grok_build::deep_research::DeepResearchOutput),
 }
 impl ToolOutput {
     /// Whether this output is a logical tool failure, for `tool.execution`'s
@@ -986,6 +988,7 @@ impl ToolOutput {
             ToolOutput::ImageToVideo(m) => m.prompt_text("Video generated"),
             ToolOutput::ReferenceToVideo(m) => m.prompt_text("Video generated"),
             ToolOutput::ImageEdit(m) => m.prompt_text("Image edited"),
+            ToolOutput::DeepResearch(m) => m.to_prompt_format(),
         }
     }
 }
