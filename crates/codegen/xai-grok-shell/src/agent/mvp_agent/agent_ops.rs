@@ -166,8 +166,19 @@ impl MvpAgent {
             && self.has_managed_mcp_auth()
     }
     fn can_fetch_managed_mcp_gateway_tools(&self) -> bool {
-        self.cfg.borrow().managed_mcp_gateway_tools_enabled
-            && self.has_managed_mcp_auth()
+        // Additional check: only allow if explicitly set via env var
+        // This prevents managed gateway tools from syncing back after login
+        if std::env::var("GROK_MANAGED_MCP_GATEWAY_TOOLS_ENABLED").is_ok() {
+            let env_val = std::env::var("GROK_MANAGED_MCP_GATEWAY_TOOLS_ENABLED").unwrap();
+            if env_val == "1" {
+                return self.cfg.borrow().managed_mcp_gateway_tools_enabled
+                    && self.has_managed_mcp_auth();
+            } else {
+                return false;
+            }
+        }
+        // Default: disabled to prevent sync-back after login
+        false
     }
     pub async fn get_managed_mcp_configs(
         &self,

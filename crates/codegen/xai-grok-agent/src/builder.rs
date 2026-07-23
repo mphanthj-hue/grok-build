@@ -746,13 +746,19 @@ impl AgentBuilder {
             //     use xai_grok_tools::implementations::grok_build;
             //     tool_config.tools.push((&grok_build::WebSearchTool).into());
             // }
+            // FREE EDITION: DeepResearchTool — native multi-source search using free APIs.
+            // WIP — does not compile yet; uncomment when ready.
+            // {
+            //     use xai_grok_tools::implementations::grok_build;
+            //     tool_config.tools.push((&grok_build::DeepResearchTool).into());
+            // }
             if self.web_fetch_config.is_enabled() {
                 use xai_grok_tools::implementations::grok_build;
                 tool_config.tools.push((&grok_build::WebFetchTool).into());
             }
             if self.obscura_config.is_enabled() {
                 use xai_grok_tools::implementations::grok_build;
-                tool_config.tools.push((&grok_build::ObscuraTool).into());
+                tool_config.tools.push((&grok_build::ObscuraFetchTool).into());
                 tool_config.tools.push((&grok_build::ObscuraScrapeTool).into());
             }
             if self.lsp.is_some() {

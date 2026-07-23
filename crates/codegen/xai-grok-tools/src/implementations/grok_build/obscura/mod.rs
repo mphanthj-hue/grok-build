@@ -493,7 +493,6 @@ impl xai_tool_runtime::Tool for ObscuraScrapeTool {
     ) -> Result<BashOutput, xai_tool_runtime::ToolError> {
         if input.urls.is_empty() {
             return Err(xai_tool_runtime::ToolError::invalid_arguments(
-                xai_tool_protocol::ToolId::new("obscura_scrape").expect("valid tool id"),
                 "At least one URL is required",
             ));
         }
