@@ -22,9 +22,7 @@ pub use xai_grok_config_types::{
     PatternMode, PermissionConfig, PermissionRule, RuleAction, ToolFilter,
 };
 // Relay-sync + MCP-config value types extracted; re-exported to keep paths stable.
-pub use xai_grok_config_types::{McpConfig, RelaySyncConfig};
-// Worktree-pool config value type extracted; re-exported to keep paths stable.
-pub use xai_grok_config_types::PoolConfig;
+pub use xai_grok_config_types::{McpConfig, NetworkConfig, PoolConfig, RelaySyncConfig};
 
 /// TUI/CLI settings. Composed from typed section configs defined in `agent::config`.
 #[derive(Debug, Clone, Default)]
@@ -42,6 +40,8 @@ pub struct Config {
     /// Permission policy rules loaded from `[permission]` section in config.toml.
     pub permission: Option<PermissionConfig>,
     pub diagnostics: crate::agent::config::DiagnosticsConfig,
+    /// `[network]` section — WARP/network settings for IP rotation.
+    pub network: NetworkConfig,
     /// `[session]` section — round-tripped through `merge_section` so
     /// pager setters can persist session fields (e.g. auto-compact threshold).
     pub session: crate::agent::config::SessionConfig,

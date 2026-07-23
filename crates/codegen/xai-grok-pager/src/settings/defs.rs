@@ -1563,5 +1563,75 @@ pub fn default_settings() -> Vec<SettingMeta> {
             restart_required: false,
             hidden_in_minimal: false,
         },
+        // ── WARP / Network ──────────────────────────────────────────
+        SettingMeta {
+            key: "warp_enabled",
+            category: SettingCategory::Session,
+            owner: SettingOwner::Shell,
+            label: "WARP IP rotation",
+            description: "Automatically rotate WARP IP address after compaction and/or at session start. \
+                          Requires Cloudflare WARP (warp-cli) to be installed.",
+            keywords: &[
+                "warp",
+                "vpn",
+                "ip",
+                "rotate",
+                "network",
+                "cloudflare",
+                "privacy",
+            ],
+            kind: SettingKind::Bool {
+                default: false,
+            },
+            restart_required: false,
+            hidden_in_minimal: false,
+        },
+        SettingMeta {
+            key: "warp_change_ip_on_compact",
+            category: SettingCategory::Session,
+            owner: SettingOwner::Shell,
+            label: "Rotate on compact",
+            description: "Reconnect WARP after every compaction to get a new public IP address.",
+            keywords: &[
+                "warp", "compact", "rotation", "ip", "reconnect", "network",
+            ],
+            kind: SettingKind::Bool {
+                default: true,
+            },
+            restart_required: false,
+            hidden_in_minimal: false,
+        },
+        SettingMeta {
+            key: "warp_change_ip_on_start",
+            category: SettingCategory::Session,
+            owner: SettingOwner::Shell,
+            label: "Rotate on start",
+            description: "Reconnect WARP at the start of every new session.",
+            keywords: &[
+                "warp", "start", "session", "rotation", "ip", "network",
+            ],
+            kind: SettingKind::Bool {
+                default: false,
+            },
+            restart_required: false,
+            hidden_in_minimal: false,
+        },
+        SettingMeta {
+            key: "warp_rate_limit_secs",
+            category: SettingCategory::Session,
+            owner: SettingOwner::Shell,
+            label: "Rate limit (sec)",
+            description: "Minimum seconds between WARP reconnects. Default 300 (5 min).",
+            keywords: &[
+                "warp", "rate", "limit", "cooldown", "throttle", "seconds",
+            ],
+            kind: SettingKind::Int {
+                default: 300,
+                min: 5,
+                max: 86400,
+            },
+            restart_required: false,
+            hidden_in_minimal: false,
+        },
     ]
 }

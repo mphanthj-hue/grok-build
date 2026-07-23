@@ -3,9 +3,16 @@
 //! Calls the `obscura` headless browser via the Terminal backend to render
 //! JavaScript-heavy pages that `web_fetch` (reqwest) cannot handle.
 //!
-//! Provides two tools:
+//! Provides two static tools:
 //! - `ObscuraFetchTool` (id: "browser") — full-featured `fetch` with all dump modes
 //! - `ObscuraScrapeTool` (id: "obscura_scrape") — batch scrape multiple URLs
+//!
+//! Plus dynamic tool registration via `session::register_obscura_tools()`:
+//! connects to a managed `obscura mcp` subprocess, discovers all ~35 browser
+//! automation tools, and registers them as native Grok Build tools on the
+//! finalized toolset.
+
+pub mod session;
 
 use crate::computer::types::{TaskKind, TerminalRunRequest};
 use crate::types::output::BashOutput;

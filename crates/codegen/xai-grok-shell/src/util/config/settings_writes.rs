@@ -302,3 +302,41 @@ pub async fn set_show_tips(value: bool) -> Result<()> {
 pub async fn set_auto_update(value: bool) -> Result<()> {
     update_config(|cfg| cfg.cli.auto_update = Some(value)).await
 }
+
+// ---------------------------------------------------------------------------
+// Network / WARP settings
+// ---------------------------------------------------------------------------
+
+/// Persist `[network.warp].enabled` via `update_config`.
+pub async fn set_warp_enabled(value: bool) -> Result<()> {
+    update_config(|cfg| cfg.network.warp.enabled = value).await
+}
+
+/// Persist `[network.warp].change_ip_on_compact` via `update_config`.
+pub async fn set_warp_change_ip_on_compact(value: bool) -> Result<()> {
+    update_config(|cfg| cfg.network.warp.change_ip_on_compact = value).await
+}
+
+/// Persist `[network.warp].change_ip_on_start` via `update_config`.
+pub async fn set_warp_change_ip_on_start(value: bool) -> Result<()> {
+    update_config(|cfg| cfg.network.warp.change_ip_on_start = value).await
+}
+
+/// Persist `[network.warp].rate_limit_secs` via `update_config`.
+/// Defensively clamps to `[0, 86400]` (0 = no rate limit, max 1 day).
+pub async fn set_warp_rate_limit_secs(value: i64) -> Result<()> {
+    let clamped = value.clamp(0, 86_400) as u64;
+    update_config(|cfg| cfg.network.warp.rate_limit_secs = clamped).await
+}
+
+/// Persist `[network.warp].sudo_policy` via `update_config`.
+/// Canonical values: `"ask"` | `"always_allow"` | `"always_deny"`.
+pub async fn set_warp_sudo_policy(value: String) -> Result<()> {
+    use xai_grok_config_types::SudoPolicy;
+    let policy = match value.as_str() {
+        "always_allow" => SudoPolicy::AlwaysAllow,
+        "always_deny" => SudoPolicy::AlwaysDeny,
+        _ => SudoPolicy::Ask,
+    };
+    update_config(|cfg| cfg.network.warp.sudo_policy = policy).await
+}

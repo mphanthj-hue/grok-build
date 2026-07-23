@@ -1737,6 +1737,8 @@ impl SessionActor {
             None,
         )
         .await;
+        // WARP IP rotation after compaction (if enabled in config)
+        self.maybe_rotate_warp_ip("compact").await;
         let tokens_after = self.chat_state_handle.get_total_tokens().await;
         {
             let span = tracing::Span::current();

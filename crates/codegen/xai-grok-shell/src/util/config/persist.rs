@@ -39,6 +39,7 @@ async fn save_config_locked(config: &Config) -> Result<()> {
     merge_section(table, "ui", &config.ui);
     merge_section(table, "harness", &config.harness);
     merge_section(table, "session", &config.session);
+    merge_section(table, "network", &config.network);
     merge_ask_user_question_section(table, &config.ask_user_question);
     if config.privacy == super::mcp::PrivacyConfig::default() {
         table.remove("privacy");

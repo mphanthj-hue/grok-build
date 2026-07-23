@@ -12,6 +12,8 @@ use crate::error::{WorkspaceError, WorkspaceResult};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig;
+use xai_grok_tools::implementations::grok_build::obscura::session::register_obscura_tools;
 use xai_grok_tools::registry::types::{
     FinalizedToolset, ToolConfig, ToolRegistryBuilder, ToolServerConfig,
 };
@@ -56,6 +58,34 @@ pub(crate) fn resolve_session_toolset(
         notification_handle,
         terminal_backend.backend().clone(),
     )?;
+
+    // Initialize Obscura browser session after toolset finalization.
+    // If the `obscura` binary is available (and GROK_DISABLE_BROWSER != 1),
+    // spawn a managed `obscura mcp` subprocess and register all ~35 browser
+    // automation tools as native tools on the toolset.
+    {
+        let obscura_config = build_obscura_config();
+        if obscura_config.is_enabled() {
+            let ts = Arc::clone(&toolset);
+            tokio::spawn(async move {
+                match register_obscura_tools(&ts, false).await {
+                    Ok(session) => {
+                        // Store the session in Resources so tools can find it
+                        ts.update_resource(session).await;
+                        tracing::info!("Obscura browser session initialized");
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "Failed to initialize Obscura browser session; \
+                             falling back to static (fetch-only) tools"
+                        );
+                    }
+                }
+            });
+        }
+    }
+
     Ok((effective, toolset, terminal_backend))
 }
 /// Rebuild-shaped entry: run steps 2-5 of the resolution pipeline around an

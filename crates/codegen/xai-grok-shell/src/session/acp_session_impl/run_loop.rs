@@ -1820,6 +1820,8 @@ pub(super) async fn run_session(
                                 .await;
                                 session.send_hook_execution("session_start", None, None, &results).await;
                             }
+                            // WARP IP rotation at session start (if enabled in config)
+                            session.maybe_rotate_warp_ip("start").await;
                         }
                         SessionCommand::GetFeedbackContext { turn_number, responds_to } => {
                             let s = session.clone();

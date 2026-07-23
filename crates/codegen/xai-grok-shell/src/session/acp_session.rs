@@ -110,6 +110,8 @@ pub(crate) use laziness::*;
 mod hooks_plugins;
 #[path = "acp_session_impl/mcp.rs"]
 mod mcp;
+#[path = "acp_session_impl/warp.rs"]
+mod warp;
 #[path = "acp_session_impl/model_switch.rs"]
 mod model_switch;
 #[path = "acp_session_impl/prompt_queue.rs"]
@@ -1074,6 +1076,9 @@ pub(crate) struct SessionActor {
     /// session spawn; concurrent appends rely on `O_APPEND`'s atomic
     /// guarantee for writes under `PIPE_BUF` (JSONL lines fit).
     pub(crate) laziness_debug_log: Option<std::sync::Arc<std::path::Path>>,
+    /// WARP IP rotation state: rate-limiting timestamp for reconnects.
+    /// `None` when WARP is disabled or the rotation module is inactive.
+    pub(crate) warp_rotation_state: Option<warp::WarpRotationState>,
 }
 /// Template for building trace configs on synthetic auto-wake turns.
 ///

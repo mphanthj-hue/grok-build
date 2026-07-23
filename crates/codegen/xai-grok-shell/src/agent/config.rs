@@ -578,7 +578,9 @@ impl Default for EndpointsConfig {
         }
     }
 }
-pub use xai_grok_config_types::{BoolFlag, ConfigSource, LazinessDetectorPerModelConfig, Resolved};
+pub use xai_grok_config_types::{
+    BoolFlag, ConfigSource, LazinessDetectorPerModelConfig, NetworkConfig, Resolved, WarpConfig,
+};
 /// Resolution result for a `/goal` role's model selection.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) enum GoalRoleModelChoice {
@@ -1320,6 +1322,10 @@ pub struct PermissionKnownKeys {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub features: Features,
+    /// `[network]` section: WARP/network configuration.
+    /// See [`xai_grok_config_types::NetworkConfig`].
+    #[serde(default)]
+    pub network: NetworkConfig,
     /// `[goal]` section: canonical `/goal` configuration. See [`GoalConfig`].
     #[serde(default)]
     pub goal: GoalConfig,
@@ -1768,6 +1774,7 @@ impl Default for Config {
         let endpoints = EndpointsConfig::default();
         let mut cfg = Self {
             features: Features::default(),
+            network: NetworkConfig::default(),
             goal: GoalConfig::default(),
             workflows: WorkflowsConfig::default(),
             doom_loop_recovery: crate::util::config::DoomLoopRecoverySettings::default(),

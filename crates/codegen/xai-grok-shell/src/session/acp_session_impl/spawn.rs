@@ -1631,6 +1631,11 @@ pub(crate) async fn spawn_session_actor(
         subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
         workspace_ops: workspace_ops.clone(),
         trace_config_template: std::cell::RefCell::new(None),
+        warp_rotation_state: if effective_config.network.warp.enabled {
+            Some(warp::WarpRotationState::from_warp_config(&effective_config.network.warp))
+        } else {
+            None
+        },
     });
     if goal_was_restored {
         let current_tokens = session.chat_state_handle.get_total_tokens().await as i64;

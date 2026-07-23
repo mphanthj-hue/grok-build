@@ -468,6 +468,44 @@ fn build_search_haystack(m: &SettingMeta) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// WARP config-toml readers — helpers for ``current_value_for`.
+// ---------------------------------------------------------------------------
+
+/// Read a `bool` from `[network.warp].<key>` in `~/.grok/config.toml`.
+/// Returns `default` when the key is missing, the file can't be read, or the
+/// value isn't a valid boolean.
+fn current_warp_bool(key: &str, default: bool) -> SettingValue {
+    let path = xai_grok_shell::util::grok_home::grok_home().join("config.toml");
+    let Some(doc) = crate::config_toml_edit::read_config_document_for_edit(&path) else {
+        return SettingValue::Bool(default);
+    };
+    let value = doc
+        .get("network")
+        .and_then(|n| n.get("warp"))
+        .and_then(|w| w.get(key))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(default);
+    SettingValue::Bool(value)
+}
+
+/// Read an `i64` from `[network.warp].<key>` in `~/.grok/config.toml`.
+/// Returns `default` when the key is missing, the file can't be read, or the
+/// value isn't a valid integer.
+fn current_warp_int(key: &str, default: i64) -> SettingValue {
+    let path = xai_grok_shell::util::grok_home::grok_home().join("config.toml");
+    let Some(doc) = crate::config_toml_edit::read_config_document_for_edit(&path) else {
+        return SettingValue::Int(default);
+    };
+    let value = doc
+        .get("network")
+        .and_then(|n| n.get("warp"))
+        .and_then(|w| w.get(key))
+        .and_then(|v| v.as_integer())
+        .unwrap_or(default);
+    SettingValue::Int(value)
+}
+
+// ---------------------------------------------------------------------------
 // Snapshot reads — the one place that maps SettingKey → live field.
 // ---------------------------------------------------------------------------
 
@@ -674,6 +712,15 @@ pub fn current_value_for(
                 ui.fork_secondary_model.clone()
             }
         })),
+        // ── WARP / Network settings ─────────────────────────────
+        // Read from config.toml via the shell's effective config loader.
+        // Falls back to defaults on error or if key is missing.
+        "warp_enabled" => Some(current_warp_bool("enabled", false)),
+        "warp_change_ip_on_compact" => {
+            Some(current_warp_bool("change_ip_on_compact", true))
+        }
+        "warp_change_ip_on_start" => Some(current_warp_bool("change_ip_on_start", false)),
+        "warp_rate_limit_secs" => Some(current_warp_int("rate_limit_secs", 300)),
 
         _ => None,
     }

@@ -1158,6 +1158,39 @@ pub(crate) async fn persist_setting(
                 .await
                 .map_err(|e| e.to_string())
         }
+        // ── Network / WARP settings ────────────────────────────
+        "warp_enabled" => {
+            let SettingValue::Bool(b) = value else {
+                return Err(kind_mismatch("warp_enabled", "Bool", &value));
+            };
+            xai_grok_shell::util::config::set_warp_enabled(b)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        "warp_change_ip_on_compact" => {
+            let SettingValue::Bool(b) = value else {
+                return Err(kind_mismatch("warp_change_ip_on_compact", "Bool", &value));
+            };
+            xai_grok_shell::util::config::set_warp_change_ip_on_compact(b)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        "warp_change_ip_on_start" => {
+            let SettingValue::Bool(b) = value else {
+                return Err(kind_mismatch("warp_change_ip_on_start", "Bool", &value));
+            };
+            xai_grok_shell::util::config::set_warp_change_ip_on_start(b)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        "warp_rate_limit_secs" => {
+            let SettingValue::Int(i) = value else {
+                return Err(kind_mismatch("warp_rate_limit_secs", "Int", &value));
+            };
+            xai_grok_shell::util::config::set_warp_rate_limit_secs(i)
+                .await
+                .map_err(|e| e.to_string())
+        }
         other => Err(format!("unknown setting key for persist: `{other}`")),
     }
 }

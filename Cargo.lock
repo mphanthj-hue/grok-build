@@ -13240,6 +13240,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.27.2",
+ "toml",
  "tracing",
  "xai-grok-announcements",
  "xai-grok-config",
@@ -13915,6 +13916,7 @@ dependencies = [
  "xai-grok-test-support",
  "xai-grok-tools",
  "xai-grok-version",
+ "xai-grok-warp",
  "xai-grok-workspace",
  "xai-hooks-plugins-types",
  "xai-hunk-tracker",
@@ -14211,6 +14213,18 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "xai-tty-utils",
+]
+
+[[package]]
+name = "xai-grok-warp"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.12.24",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "xai-grok-config-types",
 ]
 
 [[package]]

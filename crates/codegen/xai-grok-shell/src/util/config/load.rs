@@ -103,6 +103,7 @@ pub fn load_config_from_toml(root: &TomlValue) -> Config {
         management_api_key,
         permission,
         diagnostics: section(table, "diagnostics"),
+        network: section(table, "network"),
         session: section(table, "session"),
         ask_user_question: table
             .get("toolset")

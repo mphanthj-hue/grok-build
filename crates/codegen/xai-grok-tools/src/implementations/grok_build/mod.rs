@@ -71,6 +71,10 @@ pub use obscura::{
     DumpMode, ObscuraConfig, ObscuraFetchTool, ObscuraInput, ObscuraScrapeInput,
     ObscuraScrapeTool, ObscuraTool, ScrapeFormat, WaitUntil,
 };
+pub use obscura::session::{
+    BrowserSession, ObscuraDynamicTool, ObscuraToolDef,
+    register_obscura_tools,
+};
 pub use web_fetch::{WebFetchClient, WebFetchConfig, WebFetchParams, WebFetchTool};
 pub use web_search::WebSearchTool;
 pub use workflow::{WORKFLOW_TOOL_NAME, WorkflowTool};
