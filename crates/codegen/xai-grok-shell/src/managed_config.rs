@@ -473,7 +473,7 @@ pub fn is_fetch_enabled() -> bool {
     crate::config::load_effective_config()
         .ok()
         .and_then(|cfg| cfg.get("features")?.get("managed_config")?.as_bool())
-        .unwrap_or(true)
+        .unwrap_or(false)
 }
 
 /// Fetch managed config + requirements and write to `~/.grok/`, trying the

@@ -281,6 +281,20 @@ pub(super) const BUILTIN_COMMANDS: &[BuiltinCommand] = &[
         },
     },
     BuiltinCommand {
+        name: "init",
+        description: "Scan the project and generate/update AGENTS.md project instructions",
+        argument_hint: Some("--update-only | --dry-run"),
+        aliases: &[],
+        gate: BuiltinGate::AlwaysOn,
+        resolve: |args| {
+            let args_lower = args.to_lowercase();
+            BuiltinAction::Init {
+                update_only: args_lower.contains("--update-only") || args_lower.contains("-u"),
+                dry_run: args_lower.contains("--dry-run") || args_lower.contains("-n"),
+            }
+        },
+    },
+    BuiltinCommand {
         name: "goal",
         description: "Set, manage, or check an autonomous goal",
         argument_hint: Some("<objective> [--budget <tokens>] | status | pause | resume | clear"),
@@ -851,6 +865,10 @@ pub(super) enum BuiltinAction {
     MemoryToggle {
         enabled: bool,
     },
+    Init {
+        update_only: bool,
+        dry_run: bool,
+    },
     GoalSet {
         objective: String,
         token_budget: Option<i64>,
@@ -897,6 +915,7 @@ impl BuiltinAction {
             BuiltinAction::Feedback { .. } => "feedback",
             BuiltinAction::MemoryBrowse => "memory",
             BuiltinAction::MemoryToggle { .. } => "memory",
+            BuiltinAction::Init { .. } => "init",
             BuiltinAction::GoalSet { .. }
             | BuiltinAction::GoalStatus
             | BuiltinAction::GoalPause
@@ -932,6 +951,7 @@ impl BuiltinAction {
             BuiltinAction::Feedback { text } => !text.is_empty(),
             BuiltinAction::MemoryBrowse => false,
             BuiltinAction::MemoryToggle { .. } => true,
+            BuiltinAction::Init { .. } => true,            
             BuiltinAction::GoalSet { .. } => true,
             BuiltinAction::GoalStatus
             | BuiltinAction::GoalPause

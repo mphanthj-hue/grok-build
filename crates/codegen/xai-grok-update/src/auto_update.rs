@@ -398,7 +398,7 @@ pub async fn check_update_background(update_config: &UpdateConfig) -> Background
     }
 
     let current_config = config::load_config().await;
-    if current_config.cli.auto_update == Some(false) {
+    if current_config.cli.auto_update != Some(true) {
         return BackgroundUpdateCheck::none();
     }
 
@@ -487,8 +487,8 @@ pub async fn run_update_if_available(
         return Ok(false);
     }
 
-    // Resolve effective auto_update: None defaults to true (first-run).
-    let auto_update = current_config.cli.auto_update.unwrap_or(true);
+    // Resolve effective auto_update: None defaults to false (first-run).
+    let auto_update = current_config.cli.auto_update.unwrap_or(false);
 
     if current_config.cli.auto_update.is_none()
         && let Err(e) = config::update_config(|st| {

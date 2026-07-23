@@ -931,6 +931,32 @@ impl SessionActor {
             BuiltinAction::GoalResume => {
                 unreachable!("GoalResume is intercepted in handle_prompt")
             }
+            BuiltinAction::Init { update_only, dry_run } => {
+                let opts = xai_grok_init::InitOptions {
+                    update_only,
+                    dry_run,
+                };
+                let msg = match xai_grok_init::analyze_and_generate(
+                    std::path::Path::new(&self.session_info.cwd),
+                    opts,
+                )
+                .await
+                {
+                    Ok(report) => {
+                        let mut lines = vec![report.summary];
+                        if let Some(path) = &report.written_to {
+                            lines.push(format!("  Location: {path}"));
+                        }
+                        if report.gitignore_updated {
+                            lines.push("  Added 'AGENTS.local.md' to .gitignore".to_string());
+                        }
+                        lines.join("\n")
+                    }
+                    Err(e) => format!("Failed to generate AGENTS.md: {e}"),
+                };
+                self.send_host_turn_slash_command_output(&msg).await;
+                ok_end_turn(0, None)
+            }
             BuiltinAction::GoalClear => {
                 let (respond_to, deleted) = tokio::sync::oneshot::channel();
                 if self

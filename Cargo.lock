@@ -13898,6 +13898,7 @@ dependencies = [
  "xai-grok-config-types",
  "xai-grok-hooks",
  "xai-grok-http",
+ "xai-grok-init",
  "xai-grok-mcp",
  "xai-grok-memory",
  "xai-grok-models",
