@@ -1547,6 +1547,7 @@ impl MvpAgent {
         let activity = crate::agent::activity::AgentActivity::default();
         let mut subagent_coordinator = crate::agent::subagent::SubagentCoordinator::new();
         subagent_coordinator.set_running_gauge(activity.subagent_gauge());
+        subagent_coordinator.set_max_parallel(cfg.subagents.resolve_max_parallel());
         let instance = Self {
             sessions: RefCell::new(HashMap::new()),
             activity,

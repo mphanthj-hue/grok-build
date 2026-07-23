@@ -626,6 +626,8 @@ pub(crate) struct SubagentCoordinator {
     /// Cleared on freeze/cancel. See AGENTS.md rule 3 for the completeness model.
     subagent_usage_not_applied_prompts: std::collections::HashSet<String>,
     loop_owned: HashMap<String, String>,
+    /// Maximum parallel subagents (default: 4, max: 8).
+    max_parallel: u32,
 }
 /// Cap on the completed map (entries are small: identity, counts, and an
 /// error string; successful output text lives in `output.json`).

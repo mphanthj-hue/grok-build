@@ -739,6 +739,211 @@ impl SessionActor {
         sampler_config.idle_timeout_secs = Some(self.inference_idle_timeout.as_secs());
         self.sampler_handle.update_config(sampler_config);
     }
+
+    /// Auto model router: classify the latest user prompt and switch model
+    /// based on `[model_router]` in config.toml.
+    ///
+    /// Supports three classifier modes:
+    /// - `keyword` (default): simple keyword matching against built-in categories
+    /// - `regex`: regex pattern matching from `[model_router.pattern_routes]`
+    /// - `llm`: LLM-based classification using the configured classifier model
+    async fn apply_model_router(&self, request: &xai_grok_sampling_types::conversation::ConversationRequest) {
+        use xai_grok_sampling_types::conversation::{ContentPart, ConversationItem};
+
+        // Fast path: skip if disabled.
+        if !crate::util::config::load_model_router_enabled() {
+            return;
+        }
+
+        // Extract the last user message text.
+        let last_user_text = request.items.iter().rev().find_map(|item| {
+            if let ConversationItem::User(user) = item {
+                Some(&user.content)
+            } else {
+                None
+            }
+        });
+
+        let Some(user_parts) = last_user_text else {
+            return; // No user message found.
+        };
+
+        // Concatenate text parts.
+        let text: String = user_parts.iter().filter_map(|part| {
+            if let ContentPart::Text { text } = part {
+                Some(text.as_ref())
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>().join(" ");
+
+        if text.is_empty() {
+            return;
+        }
+
+        let text_lower = text.to_ascii_lowercase();
+
+        // Read router config from config.toml
+        let path = crate::util::grok_home::grok_home().join("config.toml");
+        let (routes, fallback, pattern_routes, classifier_mode) = match std::fs::read_to_string(&path) {
+            Ok(content) => {
+                let doc: toml::Value = content.parse().unwrap_or(toml::Value::Table(toml::map::Map::new()));
+                let router = doc.get("model_router");
+
+                // Read keyword routes
+                let routes = router
+                    .and_then(|r| r.get("routes"))
+                    .and_then(|r| r.as_table())
+                    .map(|t| {
+                        t.iter()
+                            .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                            .collect::<std::collections::HashMap<String, String>>()
+                    })
+                    .unwrap_or_default();
+
+                // Read fallback model
+                let fallback = router
+                    .and_then(|r| r.get("fallback_model"))
+                    .and_then(|r| r.as_str())
+                    .map(|s| s.to_string());
+
+                // Read pattern routes (regex-based)
+                let pattern_routes = router
+                    .and_then(|r| r.get("pattern_routes"))
+                    .and_then(|r| r.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| {
+                                let pattern = v.get("pattern")?.as_str()?.to_string();
+                                let model = v.get("model")?.as_str()?.to_string();
+                                let priority = v.get("priority").and_then(|p| p.as_integer()).unwrap_or(100) as u32;
+                                Some(crate::agent::config::PatternRoute { pattern, model, priority })
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+
+                // Read classifier mode
+                let classifier_mode = router
+                    .and_then(|r| r.get("classifier"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("keyword")
+                    .to_string();
+
+                (routes, fallback, pattern_routes, classifier_mode)
+            }
+            Err(_) => (std::collections::HashMap::new(), None, Vec::new(), "keyword".to_string()),
+        };
+
+        // Determine the target model based on classifier mode
+        let override_model = match classifier_mode.as_str() {
+            "regex" => {
+                // Regex-based classification: check pattern_routes in priority order
+                let mut sorted_routes = pattern_routes.clone();
+                sorted_routes.sort_by_key(|r| r.priority);
+                sorted_routes.iter().find_map(|route| {
+                    regex::Regex::new(&route.pattern).ok().and_then(|re| {
+                        if re.is_match(&text_lower) {
+                            Some(route.model.clone())
+                        } else {
+                            None
+                        }
+                    })
+                }).or(fallback)
+            }
+            "llm" => {
+                // LLM-based classification: use classifier model to categorize
+                self.classify_with_llm(&text, &routes, &fallback).await
+            }
+            _ => {
+                // Keyword-based classification (default)
+                let category = if contains_any(&text_lower, &["fn ", "fn(", "pub ", "impl ", "struct ", "enum ", "trait ", "use ", "mod ", "cargo", "rustc", "compile", "clippy", "cargo test", "cargo build"])
+                {
+                    "code"
+                } else if contains_any(&text_lower, &["bug", "crash", "panic", "error:", "error ", "debug", "fix", "issue", "broken", "fails", "stack trace", "segfault", "SIGSEGV"])
+                {
+                    "debug"
+                } else if contains_any(&text_lower, &["research", "search for", "find ", "look up", "what is", "who is", "how does", "explain", "summary of", "documentation", "wiki", "wikipedia", "information about", "tell me about", "deep research"])
+                {
+                    "research"
+                } else if contains_any(&text_lower, &["document", "write doc", "readme", "README", "documentation", "CHANGELOG", "docstring", "comment", "docs", "manual", "guide"])
+                {
+                    "document"
+                } else {
+                    "general"
+                };
+
+                routes.get(category).cloned().or(fallback)
+            }
+        };
+
+        let Some(target_model) = override_model else {
+            return; // No route or fallback configured.
+        };
+
+        // Get current model from chat state.
+        let current_model = self.chat_state_handle.get_sampling_config().await
+            .map(|cfg| cfg.model)
+            .unwrap_or_default();
+
+        if current_model == target_model {
+            return; // Already on the right model.
+        }
+
+        // Apply override: update chat_state handle + re-push to sampler.
+        if let Some(mut cfg) = self.chat_state_handle.get_sampling_config().await {
+            cfg.model = target_model;
+            self.chat_state_handle.update_sampling_config(cfg);
+        }
+        let mut sampler_config = self.reconstruct_full_config().await;
+        sampler_config.idle_timeout_secs = Some(self.inference_idle_timeout.as_secs());
+        self.sampler_handle.update_config(sampler_config);
+    }
+
+    /// LLM-based prompt classification: call the classifier model to categorize
+    /// the user prompt, then map to a route model.
+    ///
+    /// NOTE: This is a stub that falls back to keyword matching.
+    /// Full LLM classifier implementation requires async sampling infrastructure
+    /// and is planned as a future enhancement.
+    async fn classify_with_llm(
+        &self,
+        text: &str,
+        routes: &std::collections::HashMap<String, String>,
+        fallback: &Option<String>,
+    ) -> Option<String> {
+        tracing::warn!(
+            "LLM classifier mode selected but not yet implemented; falling back to keyword matching"
+        );
+        self.fallback_keyword_classify(text, routes, fallback)
+    }
+
+    /// Fallback keyword-based classification when LLM classifier is unavailable.
+    fn fallback_keyword_classify(
+        &self,
+        text: &str,
+        routes: &std::collections::HashMap<String, String>,
+        fallback: &Option<String>,
+    ) -> Option<String> {
+        let text_lower = text.to_ascii_lowercase();
+        let category = if contains_any(&text_lower, &["fn ", "fn(", "pub ", "impl ", "struct ", "enum ", "trait ", "use ", "mod ", "cargo", "rustc", "compile", "clippy", "cargo test", "cargo build"])
+        {
+            "code"
+        } else if contains_any(&text_lower, &["bug", "crash", "panic", "error:", "error ", "debug", "fix", "issue", "broken", "fails", "stack trace", "segfault", "SIGSEGV"])
+        {
+            "debug"
+        } else if contains_any(&text_lower, &["research", "search for", "find ", "look up", "what is", "who is", "how does", "explain", "summary of", "documentation", "wiki", "wikipedia", "information about", "tell me about", "deep research"])
+        {
+            "research"
+        } else if contains_any(&text_lower, &["document", "write doc", "readme", "README", "documentation", "CHANGELOG", "docstring", "comment", "docs", "manual", "guide"])
+        {
+            "document"
+        } else {
+            "general"
+        };
+        routes.get(category).cloned().or_else(|| fallback.clone())
+    }
+
     fn log_terminal_failure(&self, error_type: &str, status_code: Option<u16>, message: &str) {
         let auth = self
             .auth_manager
@@ -1106,6 +1311,8 @@ impl SessionActor {
         request: ConversationRequest,
     ) -> Result<SamplerTurnOutcome, acp::Error> {
         self.prepare_sampler_for_turn().await;
+        // Auto model router: classify prompt and switch model if enabled.
+        self.apply_model_router(&request).await;
         let stream_drained_rx = {
             let (tx, rx) = tokio::sync::oneshot::channel();
             *self.turn_stream_drained.lock() = Some(tx);
@@ -1369,6 +1576,12 @@ impl SessionActor {
             .push_assistant_response(assistant_item);
     }
 }
+
+/// Check if `text` contains any of the given `keywords`.
+fn contains_any(text: &str, keywords: &[&str]) -> bool {
+    keywords.iter().any(|kw| text.contains(kw))
+}
+
 /// Per-tool precedence: a non-empty `over` wins, else the non-empty `seed`.
 fn prefer_non_empty<T>(
     over: Option<T>,

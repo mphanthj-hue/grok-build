@@ -111,6 +111,7 @@ pub fn load_config_from_toml(root: &TomlValue) -> Config {
             .and_then(|v| v.clone().try_into().ok())
             .unwrap_or_default(),
         privacy: section(table, "privacy"),
+        model_router: section(table, "model_router"),
     }
 }
 /// Resolve permission config with project override semantics.

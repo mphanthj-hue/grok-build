@@ -1342,6 +1342,9 @@ pub struct Config {
     /// `[auto_mode]` section: Auto permission-mode configuration. See [`AutoModeConfig`].
     #[serde(default)]
     pub auto_mode: AutoModeConfig,
+    /// `[model_router]` section: auto-model routing. See [`ModelRouterConfig`].
+    #[serde(default)]
+    pub model_router: ModelRouterConfig,
     /// `[model.*]` overrides from config.toml. Resolve via `resolve_model_list()`.
     #[serde(skip)]
     pub config_models: IndexMap<String, ConfigModelOverride>,
@@ -1780,6 +1783,7 @@ impl Default for Config {
             doom_loop_recovery: crate::util::config::DoomLoopRecoverySettings::default(),
             worktree: WorktreeConfigSection::default(),
             auto_mode: AutoModeConfig::default(),
+            model_router: ModelRouterConfig::default(),
             config_models: IndexMap::new(),
             config_warnings: Vec::new(),
             grok_com_config: GrokComConfig::default(),
@@ -4462,6 +4466,74 @@ pub struct WorkflowsConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 }
+/// Classifier mode for the model router.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RouterClassifier {
+    /// Keyword-based classification (current behavior).
+    Keyword,
+    /// Regex pattern matching against prompt text.
+    Regex,
+    /// LLM-based classification using the classifier model.
+    Llm,
+}
+
+impl Default for RouterClassifier {
+    fn default() -> Self {
+        Self::Keyword
+    }
+}
+
+impl RouterClassifier {
+    pub const VALID_VALUES: &[&str] = &["keyword", "regex", "llm"];
+}
+
+/// A regex-based route entry for `[model_router.pattern_routes]`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PatternRoute {
+    /// Regex pattern to match against the user prompt (lowercased).
+    pub pattern: String,
+    /// Model slug to route to when the pattern matches.
+    pub model: String,
+    /// Priority: lower values are checked first. Defaults to 100.
+    #[serde(default = "default_pattern_priority")]
+    pub priority: u32,
+}
+
+fn default_pattern_priority() -> u32 {
+    100
+}
+
+/// `[model_router]` section: auto-model routing based on prompt content.
+/// Classifies user prompt into a category, then maps to a model from routes.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ModelRouterConfig {
+    /// Master toggle: enable prompt-based model routing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    /// Classifier mode: keyword, regex, or llm.
+    /// Defaults to Keyword if unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub classifier: Option<RouterClassifier>,
+    /// Model slug to use for prompt classification.
+    /// Defaults to session model if unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub classifier_model: Option<String>,
+    /// Fallback model when no route matches.
+    /// Defaults to session model if unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fallback_model: Option<String>,
+    /// Route map: prompt category → model slug.
+    /// e.g. code = "north-mini-code-free", research = "nemotron-3-ultra-free"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routes: Option<std::collections::HashMap<String, String>>,
+    /// Regex-based pattern routes. Checked in priority order before keyword routes.
+    /// e.g. "rust-code" = { pattern = "(fn |impl |trait ).*", model = "north-mini-code-free", priority = 10 }
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern_routes: Option<Vec<PatternRoute>>,
+}
+
 /// `[auto_mode]` section: server-side configuration for Auto permission mode.
 /// ONE struct serves both the local `[auto_mode]` TOML table and the remote
 /// remote settings `auto_mode` JSON object (coerced via `serde_json::from_value`), so

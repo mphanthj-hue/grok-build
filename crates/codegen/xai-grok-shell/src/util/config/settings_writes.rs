@@ -340,3 +340,54 @@ pub async fn set_warp_sudo_policy(value: String) -> Result<()> {
     };
     update_config(|cfg| cfg.network.warp.sudo_policy = policy).await
 }
+
+/// Persist `[model_router].enabled` via `update_config`.
+pub async fn set_model_router_enabled(value: bool) -> Result<()> {
+    update_config(|cfg| cfg.model_router.enabled = Some(value)).await
+}
+
+/// Read `[model_router].enabled` from `~/.grok/config.toml`.
+/// Returns `false` when the key is missing or the file can't be read.
+pub fn load_model_router_enabled() -> bool {
+    let path = crate::util::grok_home::grok_home().join("config.toml");
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return false;
+    };
+    let Ok(doc) = content.parse::<toml::Value>() else {
+        return false;
+    };
+    doc.get("model_router")
+        .and_then(|m| m.get("enabled"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
+
+/// Persist `[model_router].classifier` via `update_config`.
+pub async fn set_model_router_classifier(value: &str) -> Result<()> {
+    use crate::agent::config::RouterClassifier;
+    let classifier = match value {
+        "keyword" => RouterClassifier::Keyword,
+        "regex" => RouterClassifier::Regex,
+        "llm" => RouterClassifier::Llm,
+        other => return Err(anyhow::anyhow!("unknown router classifier mode: `{other}`")),
+    };
+    update_config(|cfg| cfg.model_router.classifier = Some(classifier)).await
+}
+
+/// Read `[model_router].classifier` from `~/.grok/config.toml`.
+/// Returns `"keyword"` when the key is missing or the file can't be read.
+pub fn load_model_router_classifier() -> String {
+    let path = crate::util::grok_home::grok_home().join("config.toml");
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return "keyword".to_string();
+    };
+    let Ok(doc) = content.parse::<toml::Value>() else {
+        return "keyword".to_string();
+    };
+    doc.get("model_router")
+        .and_then(|m| m.get("classifier"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "keyword".to_string())
+}

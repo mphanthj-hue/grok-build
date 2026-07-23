@@ -51,6 +51,8 @@ pub struct Config {
     pub ask_user_question: crate::tools::config::AskUserQuestionToolConfig,
     /// `[privacy]` — local banner ack (not auth-metadata).
     pub privacy: PrivacyConfig,
+    /// `[model_router]` — auto model routing configuration.
+    pub model_router: crate::agent::config::ModelRouterConfig,
 }
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]

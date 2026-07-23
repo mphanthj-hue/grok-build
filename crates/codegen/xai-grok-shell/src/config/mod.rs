@@ -224,6 +224,15 @@ impl MemoryConfig {
 pub struct SubagentsConfig {
     /// Whether subagent support is enabled.
     pub enabled: bool,
+    /// Maximum parallel subagents (default: 4, max: 8).
+    /// Parsed from `[subagents.max_parallel]` in config.toml.
+    ///
+    /// ```toml
+    /// [subagents]
+    /// max_parallel = 8
+    /// ```
+    #[serde(default)]
+    pub max_parallel: u32,
     /// Per-subagent model ID overrides.
     /// Keys are agent names, values are model IDs that must exist in the
     /// available models registry. Parsed from `[subagents.models]` in config.toml.
@@ -276,6 +285,15 @@ pub struct SubagentsConfig {
 }
 use xai_grok_subagent_resolution::config::{SubagentPersona, SubagentRole};
 impl SubagentsConfig {
+    /// Resolve the max_parallel value with safe bounds checking.
+    pub fn resolve_max_parallel(&self) -> u32 {
+        if self.max_parallel == 0 {
+            4 // default
+        } else {
+            self.max_parallel.min(8).max(1) // clamp to 1-8
+        }
+    }
+    
     fn discover_personas_in_dir(&mut self, dir: &std::path::Path) {
         if !dir.is_dir() {
             return;

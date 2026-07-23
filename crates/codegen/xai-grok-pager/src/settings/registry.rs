@@ -506,6 +506,24 @@ fn current_warp_int(key: &str, default: i64) -> SettingValue {
 }
 
 // ---------------------------------------------------------------------------
+// Model Router config-toml readers — helpers for `current_value_for`.
+// ---------------------------------------------------------------------------
+
+/// Read a `bool` from `[model_router].<key>` in `~/.grok/config.toml`.
+fn current_model_router_bool(key: &str, default: bool) -> SettingValue {
+    let path = xai_grok_shell::util::grok_home::grok_home().join("config.toml");
+    let Some(doc) = crate::config_toml_edit::read_config_document_for_edit(&path) else {
+        return SettingValue::Bool(default);
+    };
+    let value = doc
+        .get("model_router")
+        .and_then(|m| m.get(key))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(default);
+    SettingValue::Bool(value)
+}
+
+// ---------------------------------------------------------------------------
 // Snapshot reads — the one place that maps SettingKey → live field.
 // ---------------------------------------------------------------------------
 
@@ -721,6 +739,13 @@ pub fn current_value_for(
         }
         "warp_change_ip_on_start" => Some(current_warp_bool("change_ip_on_start", false)),
         "warp_rate_limit_secs" => Some(current_warp_int("rate_limit_secs", 300)),
+
+        // ── Model Router ──────────────────────────────────────
+        "model_router_enabled" => Some(current_model_router_bool("enabled", false)),
+        "model_router_classifier" => {
+            let value = xai_grok_shell::util::config::load_model_router_classifier();
+            Some(SettingValue::String(value))
+        }
 
         _ => None,
     }

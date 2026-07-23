@@ -345,6 +345,9 @@ pub struct HeadlessArgs {
     pub grok_ws_origin: Option<String>,
     #[arg(long = "grok-ws-url")]
     pub grok_ws_url: Option<String>,
+    /// Maximum parallel subagents (1-8, default: 4)
+    #[arg(long = "max-subagents", value_name = "N")]
+    pub max_subagents: Option<u32>,
 }
 /// Arguments for the `agent serve` subcommand.
 #[derive(Debug, clap::Args, Clone)]

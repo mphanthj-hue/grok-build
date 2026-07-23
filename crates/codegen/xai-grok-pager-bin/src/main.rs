@@ -55,6 +55,9 @@ fn apply_headless_args_to_config(args: &HeadlessArgs, config: &mut AgentConfig) 
     if let Some(v) = &args.grok_ws_url {
         config.grok_com_config.grok_ws_url = v.clone();
     }
+    if let Some(v) = args.max_subagents {
+        config.subagents.max_parallel = v.min(8).max(1);
+    }
 }
 /// Apply global endpoint CLI args to an existing config.
 fn apply_agent_endpoint_args(

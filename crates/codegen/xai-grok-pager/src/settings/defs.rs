@@ -6,6 +6,7 @@
 
 use super::registry::{
     DynamicEnumSource, EnumChoice, SettingCategory, SettingKind, SettingMeta, SettingOwner,
+    StringValidator,
 };
 use crate::appearance::ScrollMode;
 use crate::appearance::TextSelection;
@@ -1559,6 +1560,32 @@ pub fn default_settings() -> Vec<SettingMeta> {
                 default: "",
                 source: DynamicEnumSource::ActiveModelCatalog,
                 supports_preview: false,
+            },
+            restart_required: false,
+            hidden_in_minimal: false,
+        },
+        // ── Model Router ─────────────────────────────────────────────
+        SettingMeta {
+            key: "model_router_enabled",
+            category: SettingCategory::Models,
+            owner: SettingOwner::Shell,
+            label: "Auto Model Router",
+            description: "Automatically selects the best model for each prompt based on content. Routes code → north-mini-code-free, research → nemotron-3-ultra-free, etc.",
+            keywords: &["model", "router", "auto", "route", "dispatch", "classify", "prompt"],
+            kind: SettingKind::Bool { default: false },
+            restart_required: false,
+            hidden_in_minimal: false,
+        },
+        SettingMeta {
+            key: "model_router_classifier",
+            category: SettingCategory::Models,
+            owner: SettingOwner::Shell,
+            label: "Router Classifier",
+            description: "Classification method for the model router. Keyword: simple keyword matching. Regex: regex pattern routes from config. LLM: LLM-based classification (experimental, falls back to keyword).",
+            keywords: &["model", "router", "classifier", "keyword", "regex", "llm", "classification"],
+            kind: SettingKind::String {
+                default: "keyword",
+                validator: StringValidator::Any,
             },
             restart_required: false,
             hidden_in_minimal: false,

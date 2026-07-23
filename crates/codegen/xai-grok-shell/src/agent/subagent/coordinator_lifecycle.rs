@@ -26,6 +26,9 @@ use xai_grok_workspace::file_system::AsyncFileSystem;
 use xai_hunk_tracker::HunkTrackerHandle;
 use super::*;
 impl SubagentCoordinator {
+    const DEFAULT_MAX_PARALLEL: u32 = 4;
+    const MAX_SAFE_LIMIT: u32 = 8;
+    
     pub fn new() -> Self {
         Self {
             pending: HashMap::new(),
@@ -39,7 +42,30 @@ impl SubagentCoordinator {
             block_wait_slots: HashMap::new(),
             subagent_usage_not_applied_prompts: std::collections::HashSet::new(),
             loop_owned: HashMap::new(),
+            max_parallel: Self::DEFAULT_MAX_PARALLEL,
         }
+    }
+    
+    /// Set the maximum parallel subagents limit.
+    pub fn set_max_parallel(&mut self, max_parallel: u32) {
+        self.max_parallel = max_parallel.min(Self::MAX_SAFE_LIMIT).max(1);
+    }
+    
+    /// Get the current maximum parallel limit.
+    pub fn max_parallel(&self) -> u32 {
+        self.max_parallel
+    }
+    
+    /// Check if a new subagent can be spawned without exceeding the parallel limit.
+    pub fn can_spawn_subagent(&self) -> bool {
+        let current_count = self.pending.len() + self.active.len();
+        current_count < self.max_parallel as usize
+    }
+    
+    /// Get the number of remaining slots for parallel subagents.
+    pub fn remaining_capacity(&self) -> usize {
+        let current_count = self.pending.len() + self.active.len();
+        self.max_parallel as usize - current_count
     }
     pub fn mark_subagent_usage_not_applied(&mut self, prompt_id: &str) {
         self.subagent_usage_not_applied_prompts.insert(prompt_id.to_string());
