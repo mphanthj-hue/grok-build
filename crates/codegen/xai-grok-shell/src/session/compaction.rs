@@ -2429,6 +2429,7 @@ mod inline_auto_compact_flow_tests {
             mcp_handshakes_done: Arc::new(tokio::sync::Notify::new()),
             user_input_generation: std::sync::atomic::AtomicU64::new(0),
             laziness_debug_log: None,
+            warp_rotation_state: None,
             deferred_prefix: TaskSlot::new(),
             extension_registry: xai_agent_lifecycle::LocalExtensionRegistry::default(),
             last_announced_local_date: std::cell::Cell::new(chrono::Local::now().date_naive()),
