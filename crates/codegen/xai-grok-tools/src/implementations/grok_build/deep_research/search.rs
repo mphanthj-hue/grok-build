@@ -21,41 +21,60 @@ pub async fn search_all(
         .build()
         .unwrap_or_default();
 
-    let use_all = sources.is_empty() || sources.iter().any(|s| matches!(s, super::types::SearchSource::All));
+    let use_all = sources.is_empty()
+        || sources
+            .iter()
+            .any(|s| matches!(s, super::types::SearchSource::All));
     let mut sections = Vec::new();
     let mut errors = Vec::new();
     let mut handles = Vec::new();
     let max = max_results.max(1).min(20) as usize;
 
     // DuckDuckGo
-    if use_all || sources.iter().any(|s| matches!(s, super::types::SearchSource::DuckDuckGo)) {
+    if use_all
+        || sources
+            .iter()
+            .any(|s| matches!(s, super::types::SearchSource::DuckDuckGo))
+    {
         let c = client.clone();
         let q = query.to_string();
-        handles.push(tokio::spawn(async move {
-            search_duckduckgo(&c, &q, max).await
-        }));
+        handles.push(tokio::spawn(
+            async move { search_duckduckgo(&c, &q, max).await },
+        ));
     }
 
     // Wikipedia
-    if use_all || sources.iter().any(|s| matches!(s, super::types::SearchSource::Wikipedia)) {
+    if use_all
+        || sources
+            .iter()
+            .any(|s| matches!(s, super::types::SearchSource::Wikipedia))
+    {
         let c = client.clone();
         let q = query.to_string();
-        handles.push(tokio::spawn(async move {
-            search_wikipedia(&c, &q, max).await
-        }));
+        handles.push(tokio::spawn(
+            async move { search_wikipedia(&c, &q, max).await },
+        ));
     }
 
     // HackerNews
-    if use_all || sources.iter().any(|s| matches!(s, super::types::SearchSource::HackerNews)) {
+    if use_all
+        || sources
+            .iter()
+            .any(|s| matches!(s, super::types::SearchSource::HackerNews))
+    {
         let c = client.clone();
         let q = query.to_string();
-        handles.push(tokio::spawn(async move {
-            search_hackernews(&c, &q, max).await
-        }));
+        handles.push(tokio::spawn(
+            async move { search_hackernews(&c, &q, max).await },
+        ));
     }
 
     // Google News
-    if use_all || sources.iter().any(|s| matches!(s, super::types::SearchSource::GoogleNews)) {
+    if use_all
+        || sources
+            .iter()
+            .any(|s| matches!(s, super::types::SearchSource::GoogleNews))
+    {
         let c = client.clone();
         let q = query.to_string();
         handles.push(tokio::spawn(async move {
@@ -88,15 +107,23 @@ async fn search_duckduckgo(
     max: usize,
 ) -> Result<(ResearchSection, Vec<String>), String> {
     let url = format!("https://html.duckduckgo.com/html/?q={}", urlencoding(query));
-    let resp = client.get(&url).send().await.map_err(|e| format!("DDG request failed: {e}"))?;
-    let html = resp.text().await.map_err(|e| format!("DDG body failed: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("DDG request failed: {e}"))?;
+    let html = resp
+        .text()
+        .await
+        .map_err(|e| format!("DDG body failed: {e}"))?;
 
     let document = scraper::Html::parse_document(&html);
 
     // Selector for result links: .results .result__a
     let result_sel = scraper::Selector::parse(".result").map_err(|_| "Invalid selector")?;
     let link_sel = scraper::Selector::parse(".result__a").map_err(|_| "Invalid selector")?;
-    let snippet_sel = scraper::Selector::parse(".result__snippet").map_err(|_| "Invalid selector")?;
+    let snippet_sel =
+        scraper::Selector::parse(".result__snippet").map_err(|_| "Invalid selector")?;
 
     let mut results = Vec::new();
 
@@ -151,8 +178,15 @@ async fn search_wikipedia(
         urlencoding(query),
         max.min(20)
     );
-    let resp = client.get(&url).send().await.map_err(|e| format!("Wikipedia request failed: {e}"))?;
-    let json: serde_json::Value = resp.json().await.map_err(|e| format!("Wikipedia JSON failed: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Wikipedia request failed: {e}"))?;
+    let json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Wikipedia JSON failed: {e}"))?;
 
     let mut results = Vec::new();
     let mut errors = Vec::new();
@@ -205,24 +239,38 @@ async fn search_hackernews(
         urlencoding(query),
         max.min(50)
     );
-    let resp = client.get(&url).send().await.map_err(|e| format!("HN request failed: {e}"))?;
-    let json: serde_json::Value = resp.json().await.map_err(|e| format!("HN JSON failed: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("HN request failed: {e}"))?;
+    let json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("HN JSON failed: {e}"))?;
 
     let mut results = Vec::new();
 
     if let Some(hits) = json["hits"].as_array() {
         for hit in hits.iter().take(max) {
             let title = hit["title"].as_str().unwrap_or("").to_string();
-            let url = hit["url"].as_str()
+            let url = hit["url"]
+                .as_str()
                 .or_else(|| hit["story_url"].as_str())
                 .unwrap_or("")
                 .to_string();
-            let hn_url = format!("https://news.ycombinator.com/item?id={}", hit["objectID"].as_str().unwrap_or(""));
+            let hn_url = format!(
+                "https://news.ycombinator.com/item?id={}",
+                hit["objectID"].as_str().unwrap_or("")
+            );
             let points = hit["points"].as_i64().unwrap_or(0);
             let num_comments = hit["num_comments"].as_i64().unwrap_or(0);
             let author = hit["author"].as_str().unwrap_or("").to_string();
             let created_at = hit["created_at"].as_str().unwrap_or("").to_string();
-            let snippet = format!("{} points | {} comments | by {}", points, num_comments, author);
+            let snippet = format!(
+                "{} points | {} comments | by {}",
+                points, num_comments, author
+            );
 
             if !title.is_empty() {
                 results.push(SearchResult {
@@ -257,8 +305,15 @@ async fn search_google_news(
         "https://news.google.com/rss/search?q={}&hl=en-US&gl=US&ceid=US:en",
         urlencoding(query)
     );
-    let resp = client.get(&url).send().await.map_err(|e| format!("Google News request failed: {e}"))?;
-    let xml = resp.text().await.map_err(|e| format!("Google News body failed: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Google News request failed: {e}"))?;
+    let xml = resp
+        .text()
+        .await
+        .map_err(|e| format!("Google News body failed: {e}"))?;
 
     // Parse RSS XML using quick-xml (already in workspace)
     let mut results = Vec::new();
@@ -293,10 +348,18 @@ async fn search_google_news(
             }
             Ok(Event::Text(ref e)) => {
                 let text = String::from_utf8_lossy(e.as_ref()).to_string();
-                if in_title { current_title.push_str(&text); }
-                if in_link { current_link.push_str(&text); }
-                if in_pub_date { current_date.push_str(&text); }
-                if in_source { current_source.push_str(&text); }
+                if in_title {
+                    current_title.push_str(&text);
+                }
+                if in_link {
+                    current_link.push_str(&text);
+                }
+                if in_pub_date {
+                    current_date.push_str(&text);
+                }
+                if in_source {
+                    current_source.push_str(&text);
+                }
             }
             Ok(Event::End(ref e)) => {
                 let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
@@ -309,7 +372,11 @@ async fn search_google_news(
                                 url: std::mem::take(&mut current_link),
                                 snippet: String::new(),
                                 published: Some(std::mem::take(&mut current_date)),
-                                attribution: if current_source.is_empty() { None } else { Some(std::mem::take(&mut current_source)) },
+                                attribution: if current_source.is_empty() {
+                                    None
+                                } else {
+                                    Some(std::mem::take(&mut current_source))
+                                },
                             });
                         }
                         in_item = false;
@@ -394,7 +461,8 @@ fn strip_html_tags(s: &str) -> String {
         }
     }
     // Unescape common HTML entities
-    out = out.replace("&amp;", "&")
+    out = out
+        .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&quot;", "\"")

@@ -1601,7 +1601,9 @@ pub fn default_settings() -> Vec<SettingMeta> {
             owner: SettingOwner::Shell,
             label: "Auto Model Router",
             description: "Automatically selects the best model for each prompt based on content. Routes code → north-mini-code-free, research → nemotron-3-ultra-free, etc.",
-            keywords: &["model", "router", "auto", "route", "dispatch", "classify", "prompt"],
+            keywords: &[
+                "model", "router", "auto", "route", "dispatch", "classify", "prompt",
+            ],
             kind: SettingKind::Bool { default: false },
             restart_required: false,
             hidden_in_minimal: false,
@@ -1612,7 +1614,15 @@ pub fn default_settings() -> Vec<SettingMeta> {
             owner: SettingOwner::Shell,
             label: "Router Classifier",
             description: "Classification method for the model router. Keyword: simple keyword matching. Regex: regex pattern routes from config. LLM: LLM-based classification (experimental, falls back to keyword).",
-            keywords: &["model", "router", "classifier", "keyword", "regex", "llm", "classification"],
+            keywords: &[
+                "model",
+                "router",
+                "classifier",
+                "keyword",
+                "regex",
+                "llm",
+                "classification",
+            ],
             kind: SettingKind::String {
                 default: "keyword",
                 validator: StringValidator::Any,
@@ -1637,9 +1647,7 @@ pub fn default_settings() -> Vec<SettingMeta> {
                 "cloudflare",
                 "privacy",
             ],
-            kind: SettingKind::Bool {
-                default: false,
-            },
+            kind: SettingKind::Bool { default: false },
             restart_required: false,
             hidden_in_minimal: false,
         },
@@ -1649,12 +1657,8 @@ pub fn default_settings() -> Vec<SettingMeta> {
             owner: SettingOwner::Shell,
             label: "Rotate on compact",
             description: "Reconnect WARP after every compaction to get a new public IP address.",
-            keywords: &[
-                "warp", "compact", "rotation", "ip", "reconnect", "network",
-            ],
-            kind: SettingKind::Bool {
-                default: true,
-            },
+            keywords: &["warp", "compact", "rotation", "ip", "reconnect", "network"],
+            kind: SettingKind::Bool { default: true },
             restart_required: false,
             hidden_in_minimal: false,
         },
@@ -1664,12 +1668,8 @@ pub fn default_settings() -> Vec<SettingMeta> {
             owner: SettingOwner::Shell,
             label: "Rotate on start",
             description: "Reconnect WARP at the start of every new session.",
-            keywords: &[
-                "warp", "start", "session", "rotation", "ip", "network",
-            ],
-            kind: SettingKind::Bool {
-                default: false,
-            },
+            keywords: &["warp", "start", "session", "rotation", "ip", "network"],
+            kind: SettingKind::Bool { default: false },
             restart_required: false,
             hidden_in_minimal: false,
         },
@@ -1679,9 +1679,7 @@ pub fn default_settings() -> Vec<SettingMeta> {
             owner: SettingOwner::Shell,
             label: "Rate limit (sec)",
             description: "Minimum seconds between WARP reconnects. Default 300 (5 min).",
-            keywords: &[
-                "warp", "rate", "limit", "cooldown", "throttle", "seconds",
-            ],
+            keywords: &["warp", "rate", "limit", "cooldown", "throttle", "seconds"],
             kind: SettingKind::Int {
                 default: 300,
                 min: 5,

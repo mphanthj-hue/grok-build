@@ -1067,16 +1067,14 @@ impl SamplingClient {
                         if let Some(stream_error) = try_parse_stream_error(data) {
                             Some(Err(stream_error))
                         } else {
-                            Some(
-                                normalize_and_parse_chunk(data).map_err(|e| {
-                                    tracing::error!(
-                                        error = %e,
-                                        raw_data = %data,
-                                        "Failed to deserialize ChatCompletionChunk from stream"
-                                    );
-                                    SamplingError::Serialization(e)
-                                }),
-                            )
+                            Some(normalize_and_parse_chunk(data).map_err(|e| {
+                                tracing::error!(
+                                    error = %e,
+                                    raw_data = %data,
+                                    "Failed to deserialize ChatCompletionChunk from stream"
+                                );
+                                SamplingError::Serialization(e)
+                            }))
                         }
                     }
                     Err(e) => {
@@ -2004,7 +2002,9 @@ impl SamplingClient {
 /// Many OpenAI-compatible providers deviate from the spec:
 /// - Missing `id`, `object`, `created`, or `model` fields
 /// - Non-standard `finish_reason` values (e.g. `"end_turn"`, `"STOP"`, `"eos"`, `"max_tokens"`)
-fn normalize_and_parse_chunk(data: &str) -> std::result::Result<ChatCompletionChunk, serde_json::Error> {
+fn normalize_and_parse_chunk(
+    data: &str,
+) -> std::result::Result<ChatCompletionChunk, serde_json::Error> {
     let mut v: serde_json::Value = serde_json::from_str(data)?;
 
     if let Some(choices) = v.get_mut("choices").and_then(|c| c.as_array_mut()) {

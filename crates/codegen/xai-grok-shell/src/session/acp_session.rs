@@ -110,14 +110,14 @@ pub(crate) use laziness::*;
 mod hooks_plugins;
 #[path = "acp_session_impl/mcp.rs"]
 mod mcp;
-#[path = "acp_session_impl/warp.rs"]
-mod warp;
 #[path = "acp_session_impl/model_switch.rs"]
 mod model_switch;
 #[path = "acp_session_impl/prompt_queue.rs"]
 mod prompt_queue;
 #[path = "acp_session_impl/slash_exec.rs"]
 mod slash_exec;
+#[path = "acp_session_impl/warp.rs"]
+mod warp;
 use super::PromptOrigin;
 use super::acp_types;
 use super::chat_persistence;

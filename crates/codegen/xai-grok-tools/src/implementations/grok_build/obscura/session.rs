@@ -103,14 +103,17 @@ impl BrowserSession {
         let init_result: Value = session
             .lock()
             .await
-            .send_request("initialize", serde_json::json!({
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {
-                    "name": "grok-build",
-                    "version": "0.1"
-                }
-            }))
+            .send_request(
+                "initialize",
+                serde_json::json!({
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "grok-build",
+                        "version": "0.1"
+                    }
+                }),
+            )
             .await?;
 
         // Verify the response has protocolVersion
@@ -154,11 +157,7 @@ impl BrowserSession {
     }
 
     /// Call a remote tool and return its JSON result.
-    pub async fn call_tool(
-        &mut self,
-        tool_name: &str,
-        args: Value,
-    ) -> Result<Value, String> {
+    pub async fn call_tool(&mut self, tool_name: &str, args: Value) -> Result<Value, String> {
         let params = serde_json::json!({
             "name": tool_name,
             "arguments": args,
@@ -166,7 +165,11 @@ impl BrowserSession {
         let result: Value = self.send_request("tools/call", params).await?;
 
         // MCP tool return can have content array, isError, etc.
-        if result.get("isError").and_then(Value::as_bool).unwrap_or(false) {
+        if result
+            .get("isError")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
             let error_msg = result
                 .get("content")
                 .and_then(Value::as_array)
@@ -191,7 +194,9 @@ impl BrowserSession {
 
     /// Send a JSON-RPC request and read the response.
     async fn send_request(&mut self, method: &str, params: Value) -> Result<Value, String> {
-        let id = self.next_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self
+            .next_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -340,13 +345,17 @@ impl xai_tool_runtime::Tool for ObscuraDynamicTool {
         input: Value,
     ) -> Result<ToolOutput, xai_tool_runtime::ToolError> {
         let mut session = self.session.lock().await;
-        let result = session.call_tool(&self.tool_name, input).await.map_err(|e| {
-            xai_tool_runtime::ToolError::execution(
-                xai_tool_protocol::ToolId::new(&self.tool_name)
-                    .unwrap_or_else(|_| xai_tool_protocol::ToolId::new("obscura").expect("valid")),
-                e,
-            )
-        })?;
+        let result = session
+            .call_tool(&self.tool_name, input)
+            .await
+            .map_err(|e| {
+                xai_tool_runtime::ToolError::execution(
+                    xai_tool_protocol::ToolId::new(&self.tool_name).unwrap_or_else(|_| {
+                        xai_tool_protocol::ToolId::new("obscura").expect("valid")
+                    }),
+                    e,
+                )
+            })?;
 
         // Format the result as text
         let text = format_tool_result(&result);
@@ -425,11 +434,7 @@ pub async fn register_obscura_tools(
         };
 
         toolset
-            .register_tool(
-                def.name.clone(),
-                tool,
-                Some(def.input_schema.clone()),
-            )
+            .register_tool(def.name.clone(), tool, Some(def.input_schema.clone()))
             .map_err(|e| format!("Failed to register Obscura tool '{}': {e}", def.name))?;
 
         tracing::info!(

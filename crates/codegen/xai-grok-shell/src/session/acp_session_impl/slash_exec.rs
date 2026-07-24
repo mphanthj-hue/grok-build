@@ -999,7 +999,11 @@ impl SessionActor {
             BuiltinAction::GoalResume => {
                 unreachable!("GoalResume is intercepted in handle_prompt")
             }
-            BuiltinAction::Init { update_only, dry_run, guide } => {
+            BuiltinAction::Init {
+                update_only,
+                dry_run,
+                guide,
+            } => {
                 if guide {
                     // ── Interactive mode: launch init-guide workflow ──
                     let message = match crate::session::workflow::registry::resolve_by_name(
@@ -1021,7 +1025,9 @@ impl SessionActor {
                                         .lock()
                                         .get(&run_id)
                                         .map(|r| (r.name.clone(), r.objective.clone()))
-                                        .unwrap_or_else(|| ("init-guide".to_string(), String::new()));
+                                        .unwrap_or_else(|| {
+                                            ("init-guide".to_string(), String::new())
+                                        });
                                     self.push_workflow_launch_reminder(
                                         &display,
                                         &run_id,

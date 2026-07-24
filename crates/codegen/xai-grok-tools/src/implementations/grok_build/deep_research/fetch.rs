@@ -4,8 +4,8 @@
 //! Unlimited URLs (limited by RAM/resources, not hardcoded).
 
 use super::types::SearchResult;
-use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
@@ -63,10 +63,7 @@ pub async fn fetch_urls(
 }
 
 /// Fetch a single URL and extract content as markdown.
-async fn fetch_single(
-    client: Arc<reqwest::Client>,
-    url: String,
-) -> Result<SearchResult, String> {
+async fn fetch_single(client: Arc<reqwest::Client>, url: String) -> Result<SearchResult, String> {
     let resp = client
         .get(&url)
         .header("Accept", "text/html, text/markdown, text/plain, */*")
@@ -94,7 +91,10 @@ async fn fetch_single(
     let max_bytes = 100_000; // 100KB max per URL
     let truncated = body.len() > max_bytes;
     let content = if truncated {
-        format!("{}...\n\n[Content truncated at {max_bytes} bytes]", &body[..max_bytes])
+        format!(
+            "{}...\n\n[Content truncated at {max_bytes} bytes]",
+            &body[..max_bytes]
+        )
     } else {
         body
     };
@@ -107,10 +107,7 @@ async fn fetch_single(
             if let Some(body_elem) = document.select(&sel).next() {
                 let text: String = body_elem.text().collect::<Vec<_>>().join(" ");
                 // Clean whitespace
-                let cleaned: Vec<String> = text
-                    .split_whitespace()
-                    .map(|w| w.to_string())
-                    .collect();
+                let cleaned: Vec<String> = text.split_whitespace().map(|w| w.to_string()).collect();
                 cleaned.join(" ").chars().take(2000).collect()
             } else {
                 // Fallback: grab all text

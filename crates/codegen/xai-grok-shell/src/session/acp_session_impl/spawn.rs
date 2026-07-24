@@ -1645,7 +1645,9 @@ pub(crate) async fn spawn_session_actor(
         workspace_ops: workspace_ops.clone(),
         trace_config_template: std::cell::RefCell::new(None),
         warp_rotation_state: if effective_config.network.warp.enabled {
-            Some(warp::WarpRotationState::from_warp_config(&effective_config.network.warp))
+            Some(warp::WarpRotationState::from_warp_config(
+                &effective_config.network.warp,
+            ))
         } else {
             None
         },

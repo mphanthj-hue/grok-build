@@ -2136,8 +2136,7 @@ mod tests {
             web_search_config: crate::implementations::web_search::WebSearchConfig::default(),
             web_fetch_config:
                 crate::implementations::grok_build::web_fetch::WebFetchConfig::default(),
-            obscura_config:
-                crate::implementations::grok_build::obscura::ObscuraConfig::default(),
+            obscura_config: crate::implementations::grok_build::obscura::ObscuraConfig::default(),
             lsp: None,
             image_gen_config:
                 crate::implementations::grok_build::image_gen::ImageGenConfig::default(),

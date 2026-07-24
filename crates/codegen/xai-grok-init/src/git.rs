@@ -52,8 +52,7 @@ pub async fn ensure_gitignore(project_root: &Path) -> Result<bool> {
         return Ok(false);
     }
 
-    let default_gitignore = "# Dependencies\nnode_modules/\ntarget/\n\n"
-        .to_string();
+    let default_gitignore = "# Dependencies\nnode_modules/\ntarget/\n\n".to_string();
 
     fs::write(&gitignore_path, &default_gitignore)
         .await

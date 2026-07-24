@@ -758,8 +758,12 @@ impl AgentBuilder {
             }
             if self.obscura_config.is_enabled() {
                 use xai_grok_tools::implementations::grok_build;
-                tool_config.tools.push((&grok_build::ObscuraFetchTool).into());
-                tool_config.tools.push((&grok_build::ObscuraScrapeTool).into());
+                tool_config
+                    .tools
+                    .push((&grok_build::ObscuraFetchTool).into());
+                tool_config
+                    .tools
+                    .push((&grok_build::ObscuraScrapeTool).into());
             }
             if self.lsp.is_some() {
                 tool_config

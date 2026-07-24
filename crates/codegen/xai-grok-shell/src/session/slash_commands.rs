@@ -934,7 +934,11 @@ impl BuiltinAction {
             BuiltinAction::MemoryBrowse => "memory",
             BuiltinAction::MemoryToggle { .. } => "memory",
             BuiltinAction::Init { guide, .. } => {
-                if *guide { "init-guide" } else { "init" }
+                if *guide {
+                    "init-guide"
+                } else {
+                    "init"
+                }
             }
             BuiltinAction::GoalSet { .. }
             | BuiltinAction::GoalStatus
@@ -972,7 +976,7 @@ impl BuiltinAction {
             BuiltinAction::Feedback { text } => !text.is_empty(),
             BuiltinAction::MemoryBrowse => false,
             BuiltinAction::MemoryToggle { .. } => true,
-            BuiltinAction::Init { guide, .. } => *guide,            
+            BuiltinAction::Init { guide, .. } => *guide,
             BuiltinAction::GoalSet { .. } => true,
             BuiltinAction::GoalStatus
             | BuiltinAction::GoalPause

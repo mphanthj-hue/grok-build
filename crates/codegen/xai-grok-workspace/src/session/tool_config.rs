@@ -557,8 +557,7 @@ fn build_proxy_headers(base_url: &str) -> indexmap::IndexMap<String, String> {
 ///
 /// Enabled when the `obscura` binary is found in PATH, unless
 /// `GROK_DISABLE_BROWSER=1` is set.
-fn build_obscura_config(
-) -> xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig {
+fn build_obscura_config() -> xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig {
     use xai_grok_tools::implementations::grok_build::obscura::ObscuraConfig;
     if std::env::var("GROK_DISABLE_BROWSER").is_ok_and(|v| v == "1") {
         return ObscuraConfig::Disabled;

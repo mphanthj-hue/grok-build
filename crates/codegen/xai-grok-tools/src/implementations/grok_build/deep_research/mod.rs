@@ -80,18 +80,12 @@ impl xai_tool_runtime::Tool for DeepResearchTool {
     ) -> Result<Self::Output, ToolError> {
         let query = input.query.trim().to_string();
         if query.is_empty() {
-            return Err(ToolError::invalid_arguments(
-                "query is required",
-            ));
+            return Err(ToolError::invalid_arguments("query is required"));
         }
 
         // Phase 1: Search all sources in parallel
-        let (mut sections, search_errors) = search_all(
-            &query,
-            &input.sources,
-            input.max_results_per_source,
-        )
-        .await;
+        let (mut sections, search_errors) =
+            search_all(&query, &input.sources, input.max_results_per_source).await;
 
         // Phase 2: Multi-fetch top URLs (if requested)
         if input.fetch_content {
@@ -103,11 +97,8 @@ impl xai_tool_runtime::Tool for DeepResearchTool {
                 .collect();
 
             if !urls_to_fetch.is_empty() {
-                let (fetched_results, _fetch_errors) = fetch_urls(
-                    urls_to_fetch,
-                    input.concurrency as usize,
-                )
-                .await;
+                let (fetched_results, _fetch_errors) =
+                    fetch_urls(urls_to_fetch, input.concurrency as usize).await;
 
                 if !fetched_results.is_empty() {
                     sections.push(ResearchSection {
@@ -144,7 +135,9 @@ impl xai_tool_runtime::Tool for DeepResearchTool {
             match synthesize(&output).await {
                 Some(syn) => output.synthesis = Some(syn),
                 None => {
-                    output.errors.push("Synthesis unavailable (free AI API did not respond)".to_string());
+                    output
+                        .errors
+                        .push("Synthesis unavailable (free AI API did not respond)".to_string());
                 }
             }
         }

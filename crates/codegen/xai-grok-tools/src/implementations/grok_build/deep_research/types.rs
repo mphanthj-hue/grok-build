@@ -57,10 +57,18 @@ pub struct DeepResearchInput {
     pub synthesis: bool,
 }
 
-fn default_max_results() -> u8 { 5 }
-fn default_fetch_content() -> bool { true }
-fn default_concurrency() -> u8 { 5 }
-fn default_synthesis() -> bool { true }
+fn default_max_results() -> u8 {
+    5
+}
+fn default_fetch_content() -> bool {
+    true
+}
+fn default_concurrency() -> u8 {
+    5
+}
+fn default_synthesis() -> bool {
+    true
+}
 
 /// A single search result from any source.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -121,12 +129,7 @@ impl DeepResearchOutput {
             }
             out.push_str(&format!("## {} {}\n\n", section.icon, section.label));
             for (i, result) in section.results.iter().enumerate() {
-                out.push_str(&format!(
-                    "{}. [{}]({})\n",
-                    i + 1,
-                    result.title,
-                    result.url
-                ));
+                out.push_str(&format!("{}. [{}]({})\n", i + 1, result.title, result.url));
                 out.push_str(&format!("   {}\n", result.snippet));
                 if let Some(ref date) = result.published {
                     out.push_str(&format!("   📅 {}\n", date));

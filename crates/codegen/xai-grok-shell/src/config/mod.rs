@@ -293,7 +293,7 @@ impl SubagentsConfig {
             self.max_parallel.min(8).max(1) // clamp to 1-8
         }
     }
-    
+
     fn discover_personas_in_dir(&mut self, dir: &std::path::Path) {
         if !dir.is_dir() {
             return;

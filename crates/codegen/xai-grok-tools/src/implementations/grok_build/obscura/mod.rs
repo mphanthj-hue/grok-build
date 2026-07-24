@@ -17,9 +17,7 @@ pub mod session;
 use crate::computer::types::{TaskKind, TerminalRunRequest};
 use crate::types::output::BashOutput;
 use crate::types::requirements::{Expr, ToolRequirement};
-use crate::types::resources::{
-    Cwd, NotificationHandle, SessionEnv, SessionFolder, Terminal,
-};
+use crate::types::resources::{Cwd, NotificationHandle, SessionEnv, SessionFolder, Terminal};
 use crate::types::tool::{ToolKind, ToolNamespace};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -99,7 +97,13 @@ async fn extract_resources(
         .get::<SessionEnv>()
         .map(|e| e.0.clone())
         .unwrap_or_else(|| Arc::new(HashMap::new()));
-    Ok((terminal, cwd, session_folder, notification_handle, session_env))
+    Ok((
+        terminal,
+        cwd,
+        session_folder,
+        notification_handle,
+        session_env,
+    ))
 }
 
 /// Run an obscura command through the Terminal backend and return BashOutput.
@@ -565,10 +569,7 @@ mod tests {
     #[test]
     fn browser_tool_name_and_description() {
         let tool = ObscuraFetchTool;
-        assert_eq!(
-            xai_tool_runtime::Tool::id(&tool).as_str(),
-            "browser"
-        );
+        assert_eq!(xai_tool_runtime::Tool::id(&tool).as_str(), "browser");
         assert_eq!(
             crate::types::tool_metadata::ToolMetadata::kind(&tool),
             ToolKind::Browser
@@ -582,10 +583,7 @@ mod tests {
     #[test]
     fn scrape_tool_name_and_description() {
         let tool = ObscuraScrapeTool;
-        assert_eq!(
-            xai_tool_runtime::Tool::id(&tool).as_str(),
-            "obscura_scrape"
-        );
+        assert_eq!(xai_tool_runtime::Tool::id(&tool).as_str(), "obscura_scrape");
         assert_eq!(
             crate::types::tool_metadata::ToolMetadata::kind(&tool),
             ToolKind::Browser

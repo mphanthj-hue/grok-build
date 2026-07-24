@@ -754,7 +754,10 @@ impl SessionActor {
     /// - `keyword` (default): simple keyword matching against built-in categories
     /// - `regex`: regex pattern matching from `[model_router.pattern_routes]`
     /// - `llm`: LLM-based classification using the configured classifier model
-    async fn apply_model_router(&self, request: &xai_grok_sampling_types::conversation::ConversationRequest) {
+    async fn apply_model_router(
+        &self,
+        request: &xai_grok_sampling_types::conversation::ConversationRequest,
+    ) {
         use xai_grok_sampling_types::conversation::{ContentPart, ConversationItem};
 
         // Fast path: skip if disabled.
@@ -776,13 +779,17 @@ impl SessionActor {
         };
 
         // Concatenate text parts.
-        let text: String = user_parts.iter().filter_map(|part| {
-            if let ContentPart::Text { text } = part {
-                Some(text.as_ref())
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>().join(" ");
+        let text: String = user_parts
+            .iter()
+            .filter_map(|part| {
+                if let ContentPart::Text { text } = part {
+                    Some(text.as_ref())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
 
         if text.is_empty() {
             return;
@@ -792,55 +799,71 @@ impl SessionActor {
 
         // Read router config from config.toml
         let path = crate::util::grok_home::grok_home().join("config.toml");
-        let (routes, fallback, pattern_routes, classifier_mode) = match std::fs::read_to_string(&path) {
-            Ok(content) => {
-                let doc: toml::Value = content.parse().unwrap_or(toml::Value::Table(toml::map::Map::new()));
-                let router = doc.get("model_router");
+        let (routes, fallback, pattern_routes, classifier_mode) =
+            match std::fs::read_to_string(&path) {
+                Ok(content) => {
+                    let doc: toml::Value = content
+                        .parse()
+                        .unwrap_or(toml::Value::Table(toml::map::Map::new()));
+                    let router = doc.get("model_router");
 
-                // Read keyword routes
-                let routes = router
-                    .and_then(|r| r.get("routes"))
-                    .and_then(|r| r.as_table())
-                    .map(|t| {
-                        t.iter()
-                            .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                            .collect::<std::collections::HashMap<String, String>>()
-                    })
-                    .unwrap_or_default();
+                    // Read keyword routes
+                    let routes = router
+                        .and_then(|r| r.get("routes"))
+                        .and_then(|r| r.as_table())
+                        .map(|t| {
+                            t.iter()
+                                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                                .collect::<std::collections::HashMap<String, String>>()
+                        })
+                        .unwrap_or_default();
 
-                // Read fallback model
-                let fallback = router
-                    .and_then(|r| r.get("fallback_model"))
-                    .and_then(|r| r.as_str())
-                    .map(|s| s.to_string());
+                    // Read fallback model
+                    let fallback = router
+                        .and_then(|r| r.get("fallback_model"))
+                        .and_then(|r| r.as_str())
+                        .map(|s| s.to_string());
 
-                // Read pattern routes (regex-based)
-                let pattern_routes = router
-                    .and_then(|r| r.get("pattern_routes"))
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| {
-                                let pattern = v.get("pattern")?.as_str()?.to_string();
-                                let model = v.get("model")?.as_str()?.to_string();
-                                let priority = v.get("priority").and_then(|p| p.as_integer()).unwrap_or(100) as u32;
-                                Some(crate::agent::config::PatternRoute { pattern, model, priority })
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
+                    // Read pattern routes (regex-based)
+                    let pattern_routes = router
+                        .and_then(|r| r.get("pattern_routes"))
+                        .and_then(|r| r.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| {
+                                    let pattern = v.get("pattern")?.as_str()?.to_string();
+                                    let model = v.get("model")?.as_str()?.to_string();
+                                    let priority = v
+                                        .get("priority")
+                                        .and_then(|p| p.as_integer())
+                                        .unwrap_or(100)
+                                        as u32;
+                                    Some(crate::agent::config::PatternRoute {
+                                        pattern,
+                                        model,
+                                        priority,
+                                    })
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
 
-                // Read classifier mode
-                let classifier_mode = router
-                    .and_then(|r| r.get("classifier"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("keyword")
-                    .to_string();
+                    // Read classifier mode
+                    let classifier_mode = router
+                        .and_then(|r| r.get("classifier"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("keyword")
+                        .to_string();
 
-                (routes, fallback, pattern_routes, classifier_mode)
-            }
-            Err(_) => (std::collections::HashMap::new(), None, Vec::new(), "keyword".to_string()),
-        };
+                    (routes, fallback, pattern_routes, classifier_mode)
+                }
+                Err(_) => (
+                    std::collections::HashMap::new(),
+                    None,
+                    Vec::new(),
+                    "keyword".to_string(),
+                ),
+            };
 
         // Determine the target model based on classifier mode
         let override_model = match classifier_mode.as_str() {
@@ -848,15 +871,18 @@ impl SessionActor {
                 // Regex-based classification: check pattern_routes in priority order
                 let mut sorted_routes = pattern_routes.clone();
                 sorted_routes.sort_by_key(|r| r.priority);
-                sorted_routes.iter().find_map(|route| {
-                    regex::Regex::new(&route.pattern).ok().and_then(|re| {
-                        if re.is_match(&text_lower) {
-                            Some(route.model.clone())
-                        } else {
-                            None
-                        }
+                sorted_routes
+                    .iter()
+                    .find_map(|route| {
+                        regex::Regex::new(&route.pattern).ok().and_then(|re| {
+                            if re.is_match(&text_lower) {
+                                Some(route.model.clone())
+                            } else {
+                                None
+                            }
+                        })
                     })
-                }).or(fallback)
+                    .or(fallback)
             }
             "llm" => {
                 // LLM-based classification: use classifier model to categorize
@@ -864,17 +890,83 @@ impl SessionActor {
             }
             _ => {
                 // Keyword-based classification (default)
-                let category = if contains_any(&text_lower, &["fn ", "fn(", "pub ", "impl ", "struct ", "enum ", "trait ", "use ", "mod ", "cargo", "rustc", "compile", "clippy", "cargo test", "cargo build"])
-                {
+                let category = if contains_any(
+                    &text_lower,
+                    &[
+                        "fn ",
+                        "fn(",
+                        "pub ",
+                        "impl ",
+                        "struct ",
+                        "enum ",
+                        "trait ",
+                        "use ",
+                        "mod ",
+                        "cargo",
+                        "rustc",
+                        "compile",
+                        "clippy",
+                        "cargo test",
+                        "cargo build",
+                    ],
+                ) {
                     "code"
-                } else if contains_any(&text_lower, &["bug", "crash", "panic", "error:", "error ", "debug", "fix", "issue", "broken", "fails", "stack trace", "segfault", "SIGSEGV"])
-                {
+                } else if contains_any(
+                    &text_lower,
+                    &[
+                        "bug",
+                        "crash",
+                        "panic",
+                        "error:",
+                        "error ",
+                        "debug",
+                        "fix",
+                        "issue",
+                        "broken",
+                        "fails",
+                        "stack trace",
+                        "segfault",
+                        "SIGSEGV",
+                    ],
+                ) {
                     "debug"
-                } else if contains_any(&text_lower, &["research", "search for", "find ", "look up", "what is", "who is", "how does", "explain", "summary of", "documentation", "wiki", "wikipedia", "information about", "tell me about", "deep research"])
-                {
+                } else if contains_any(
+                    &text_lower,
+                    &[
+                        "research",
+                        "search for",
+                        "find ",
+                        "look up",
+                        "what is",
+                        "who is",
+                        "how does",
+                        "explain",
+                        "summary of",
+                        "documentation",
+                        "wiki",
+                        "wikipedia",
+                        "information about",
+                        "tell me about",
+                        "deep research",
+                    ],
+                ) {
                     "research"
-                } else if contains_any(&text_lower, &["document", "write doc", "readme", "README", "documentation", "CHANGELOG", "docstring", "comment", "docs", "manual", "guide"])
-                {
+                } else if contains_any(
+                    &text_lower,
+                    &[
+                        "document",
+                        "write doc",
+                        "readme",
+                        "README",
+                        "documentation",
+                        "CHANGELOG",
+                        "docstring",
+                        "comment",
+                        "docs",
+                        "manual",
+                        "guide",
+                    ],
+                ) {
                     "document"
                 } else {
                     "general"
@@ -889,7 +981,10 @@ impl SessionActor {
         };
 
         // Get current model from chat state.
-        let current_model = self.chat_state_handle.get_sampling_config().await
+        let current_model = self
+            .chat_state_handle
+            .get_sampling_config()
+            .await
             .map(|cfg| cfg.model)
             .unwrap_or_default();
 
@@ -933,17 +1028,83 @@ impl SessionActor {
         fallback: &Option<String>,
     ) -> Option<String> {
         let text_lower = text.to_ascii_lowercase();
-        let category = if contains_any(&text_lower, &["fn ", "fn(", "pub ", "impl ", "struct ", "enum ", "trait ", "use ", "mod ", "cargo", "rustc", "compile", "clippy", "cargo test", "cargo build"])
-        {
+        let category = if contains_any(
+            &text_lower,
+            &[
+                "fn ",
+                "fn(",
+                "pub ",
+                "impl ",
+                "struct ",
+                "enum ",
+                "trait ",
+                "use ",
+                "mod ",
+                "cargo",
+                "rustc",
+                "compile",
+                "clippy",
+                "cargo test",
+                "cargo build",
+            ],
+        ) {
             "code"
-        } else if contains_any(&text_lower, &["bug", "crash", "panic", "error:", "error ", "debug", "fix", "issue", "broken", "fails", "stack trace", "segfault", "SIGSEGV"])
-        {
+        } else if contains_any(
+            &text_lower,
+            &[
+                "bug",
+                "crash",
+                "panic",
+                "error:",
+                "error ",
+                "debug",
+                "fix",
+                "issue",
+                "broken",
+                "fails",
+                "stack trace",
+                "segfault",
+                "SIGSEGV",
+            ],
+        ) {
             "debug"
-        } else if contains_any(&text_lower, &["research", "search for", "find ", "look up", "what is", "who is", "how does", "explain", "summary of", "documentation", "wiki", "wikipedia", "information about", "tell me about", "deep research"])
-        {
+        } else if contains_any(
+            &text_lower,
+            &[
+                "research",
+                "search for",
+                "find ",
+                "look up",
+                "what is",
+                "who is",
+                "how does",
+                "explain",
+                "summary of",
+                "documentation",
+                "wiki",
+                "wikipedia",
+                "information about",
+                "tell me about",
+                "deep research",
+            ],
+        ) {
             "research"
-        } else if contains_any(&text_lower, &["document", "write doc", "readme", "README", "documentation", "CHANGELOG", "docstring", "comment", "docs", "manual", "guide"])
-        {
+        } else if contains_any(
+            &text_lower,
+            &[
+                "document",
+                "write doc",
+                "readme",
+                "README",
+                "documentation",
+                "CHANGELOG",
+                "docstring",
+                "comment",
+                "docs",
+                "manual",
+                "guide",
+            ],
+        ) {
             "document"
         } else {
             "general"

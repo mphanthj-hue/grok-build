@@ -139,7 +139,11 @@ const MANIFEST_FILES: &[&str] = &[
 
 const README_FILES: &[&str] = &["README.md", "README.rst", "README.txt", "README"];
 
-const _CI_GLOB_DIRS: &[&str] = &[".github/workflows/", ".gitlab-ci.yml", ".circleci/config.yml"];
+const _CI_GLOB_DIRS: &[&str] = &[
+    ".github/workflows/",
+    ".gitlab-ci.yml",
+    ".circleci/config.yml",
+];
 
 const RULE_FILES: &[(&str, RuleSource)] = &[
     (".cursorrules", RuleSource::Cursor),
@@ -157,11 +161,9 @@ const RULE_DIRS: &[(&str, RuleSource)] = &[
 
 /// Known binary file extensions to skip during analysis.
 const BINARY_EXTENSIONS: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "bmp", "ico", "svg", "mp3", "mp4", "avi", "mov",
-    "woff", "woff2", "ttf", "eot", "pdf", "doc", "docx", "xls", "xlsx",
-    "zip", "tar", "gz", "bz2", "7z", "rar",
-    "o", "so", "dylib", "dll", "exe", "wasm",
-    "pyc", "pyo", "class", "jar",
+    "png", "jpg", "jpeg", "gif", "bmp", "ico", "svg", "mp3", "mp4", "avi", "mov", "woff", "woff2",
+    "ttf", "eot", "pdf", "doc", "docx", "xls", "xlsx", "zip", "tar", "gz", "bz2", "7z", "rar", "o",
+    "so", "dylib", "dll", "exe", "wasm", "pyc", "pyo", "class", "jar",
     "lock", // package-lock.json, Cargo.lock etc. — not useful for init
 ];
 
@@ -320,9 +322,7 @@ async fn read_manifests(root: &Path) -> Vec<Manifest> {
             "pyproject.toml" => parse_pyproject_toml(&content),
             "go.mod" => parse_go_mod(&content),
             "Makefile" => parse_makefile(&content),
-            "docker-compose.yml" | "docker-compose.yaml" => {
-                parse_docker_compose(&content)
-            }
+            "docker-compose.yml" | "docker-compose.yaml" => parse_docker_compose(&content),
             _ => continue,
         };
 
@@ -339,11 +339,7 @@ fn parse_cargo_toml(content: &str, _path: &Path) -> Option<Manifest> {
     let val: toml::Value = toml::from_str(content).ok()?;
 
     // Simple Cargo.toml parsing — look for package name and dependencies
-    let name = val
-        .get("package")?
-        .get("name")?
-        .as_str()?
-        .to_string();
+    let name = val.get("package")?.get("name")?.as_str()?.to_string();
 
     let edition = val
         .get("package")
@@ -355,11 +351,7 @@ fn parse_cargo_toml(content: &str, _path: &Path) -> Option<Manifest> {
     let build_deps = extract_toml_deps(&val, "build-dependencies");
     let dev_deps = extract_toml_deps(&val, "dev-dependencies");
 
-    let all_deps: Vec<String> = deps
-        .into_iter()
-        .chain(build_deps)
-        .chain(dev_deps)
-        .collect();
+    let all_deps: Vec<String> = deps.into_iter().chain(build_deps).chain(dev_deps).collect();
 
     let members = val
         .get("workspace")
@@ -402,12 +394,7 @@ fn parse_package_json(content: &str) -> Option<Manifest> {
         .and_then(|s| s.as_object())
         .map(|s| {
             s.iter()
-                .map(|(k, v)| {
-                    (
-                        k.clone(),
-                        v.as_str().unwrap_or("").to_string(),
-                    )
-                })
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
                 .collect()
         })
         .unwrap_or_default();
@@ -425,13 +412,11 @@ fn parse_package_json(content: &str) -> Option<Manifest> {
                         .collect(),
                 )
             } else if let Some(obj) = w.as_object() {
-                obj.get("packages")
-                    .and_then(|p| p.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
-                    })
+                obj.get("packages").and_then(|p| p.as_array()).map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
             } else {
                 None
             }
@@ -488,7 +473,15 @@ fn parse_pyproject_toml(content: &str) -> Option<Manifest> {
                 // Extract just the package name, strip version constraints
                 let pkg = s
                     .trim()
-                    .split(|c: char| c.is_whitespace() || c == '>' || c == '<' || c == '=' || c == '~' || c == '^' || c == '!')
+                    .split(|c: char| {
+                        c.is_whitespace()
+                            || c == '>'
+                            || c == '<'
+                            || c == '='
+                            || c == '~'
+                            || c == '^'
+                            || c == '!'
+                    })
                     .next()
                     .unwrap_or(s.trim())
                     .trim()
@@ -532,10 +525,7 @@ fn parse_go_mod(content: &str) -> Option<Manifest> {
         .find(|l| l.starts_with("go "))
         .map(|l| l.trim_start_matches("go ").trim().to_string());
 
-    Some(Manifest::GoMod {
-        module,
-        go_version,
-    })
+    Some(Manifest::GoMod { module, go_version })
 }
 
 fn parse_makefile(content: &str) -> Option<Manifest> {
@@ -550,7 +540,9 @@ fn parse_makefile(content: &str) -> Option<Manifest> {
                     && !name.starts_with('#')
                     && !name.contains('=')
                     && !name.contains('$')
-                    && name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+                    && name
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
                 {
                     return Some(name.to_string());
                 }
@@ -619,7 +611,11 @@ async fn list_top_level_dirs(root: &Path) -> Vec<String> {
         if entry.path().is_dir() {
             if let Some(name) = entry.file_name().to_str() {
                 // Skip hidden dirs and common non-source dirs
-                if !name.starts_with('.') && name != "target" && name != "node_modules" && name != "__pycache__" {
+                if !name.starts_with('.')
+                    && name != "target"
+                    && name != "node_modules"
+                    && name != "__pycache__"
+                {
                     names.push(name.to_string());
                 }
             }
@@ -640,7 +636,10 @@ async fn read_ci_configs(root: &Path) -> Vec<CiConfig> {
         if let Ok(mut entries) = fs::read_dir(&workflows_dir).await {
             while let Ok(Some(entry)) = entries.next_entry().await {
                 let path = entry.path();
-                if path.extension().map_or(false, |e| e == "yml" || e == "yaml") {
+                if path
+                    .extension()
+                    .map_or(false, |e| e == "yml" || e == "yaml")
+                {
                     if let Ok(content) = fs::read_to_string(&path).await {
                         configs.push(CiConfig { path, content });
                     }
@@ -737,7 +736,13 @@ members = ["crates/*"]
         // We can only test parse logic since no file I/O
         let manifest = parse_cargo_toml(content, Path::new("Cargo.toml"));
         assert!(manifest.is_some());
-        if let Some(Manifest::CargoToml { name, deps, members, edition }) = manifest {
+        if let Some(Manifest::CargoToml {
+            name,
+            deps,
+            members,
+            edition,
+        }) = manifest
+        {
             assert_eq!(name, "my-app");
             assert!(deps.contains(&"serde".to_string()));
             assert!(deps.contains(&"tokio".to_string()));
@@ -765,7 +770,14 @@ members = ["crates/*"]
         }"#;
         let manifest = parse_package_json(content);
         assert!(manifest.is_some());
-        if let Some(Manifest::PackageJson { name, scripts, deps, dev_deps, workspaces }) = manifest {
+        if let Some(Manifest::PackageJson {
+            name,
+            scripts,
+            deps,
+            dev_deps,
+            workspaces,
+        }) = manifest
+        {
             assert_eq!(name, "my-app");
             assert_eq!(scripts.get("build").map(|s| s.as_str()), Some("tsc"));
             assert_eq!(scripts.get("test").map(|s| s.as_str()), Some("vitest"));

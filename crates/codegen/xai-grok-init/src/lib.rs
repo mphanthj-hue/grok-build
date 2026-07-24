@@ -20,8 +20,8 @@ pub mod scanner;
 
 use std::path::Path;
 
-use anyhow::Result;
 pub use analyzer::{Analysis, BuildSystem, DetectedLanguage, LinterFormatter, TestFramework};
+use anyhow::Result;
 pub use scanner::ScannedProject;
 
 /// Options controlling what `/init` does.
@@ -126,11 +126,8 @@ pub async fn analyze_and_generate(cwd: &Path, opts: InitOptions) -> Result<InitR
     let export_result = export::write_grok_files(&project.root, &agents_md, &config_toml).await?;
 
     // 5c. Add .grok/ to .gitignore
-    let gitignore_updated = export::add_to_gitignore(
-        &project.root,
-        &[".grok/", "AGENTS.local.md"],
-    )
-    .await?;
+    let gitignore_updated =
+        export::add_to_gitignore(&project.root, &[".grok/", "AGENTS.local.md"]).await?;
 
     let summary = if !grok_dir_exists {
         format!(

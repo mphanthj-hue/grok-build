@@ -10,6 +10,7 @@
 //! `AvailableSkills`, `BashParams`) and registers every built-in tool.
 pub mod ask_user_question;
 pub mod bash;
+pub mod deep_research;
 #[path = "deploy_app_stub.rs"]
 pub mod deploy_app;
 pub mod enter_plan_mode;
@@ -21,6 +22,7 @@ pub mod kill_task;
 pub mod list_dir;
 pub mod lsp;
 pub mod monitor;
+pub mod obscura;
 pub mod read_file;
 pub mod scheduler;
 pub mod search_replace;
@@ -31,12 +33,11 @@ pub mod todo;
 pub mod update_goal;
 pub mod video_gen;
 pub mod web_fetch;
-pub mod deep_research;
-pub mod obscura;
 pub mod web_search;
 pub mod workflow;
 pub use ask_user_question::AskUserQuestionTool;
 pub use bash::BashTool;
+pub use deep_research::DeepResearchTool;
 pub use deploy_app::{AppBuilderDeployerConfig, DEPLOY_APP_TOOL_NAME};
 pub use enter_plan_mode::EnterPlanModeTool;
 pub use exit_plan_mode::ExitPlanModeTool;
@@ -50,6 +51,13 @@ pub use kill_task::{KillTaskTool, KillTerminalCommandTool};
 pub use list_dir::ListDirTool;
 pub use lsp::LspTool;
 pub use monitor::tool::MonitorTool;
+pub use obscura::session::{
+    BrowserSession, ObscuraDynamicTool, ObscuraToolDef, register_obscura_tools,
+};
+pub use obscura::{
+    DumpMode, ObscuraConfig, ObscuraFetchTool, ObscuraInput, ObscuraScrapeInput, ObscuraScrapeTool,
+    ObscuraTool, ScrapeFormat, WaitUntil,
+};
 pub use read_file::ReadFileTool;
 pub use scheduler::create::{
     SCHEDULER_CREATE_TOOL_NAME, SchedulerCreateTool, loop_schedule_instruction, loop_usage_message,
@@ -65,15 +73,6 @@ pub use video_gen::{
     IMAGE_TO_VIDEO_TOOL_NAME, IMAGINE_VIDEO_COMMAND_NAME, ImageToVideoTool,
     REFERENCE_TO_VIDEO_TOOL_NAME, ReferenceToVideoTool, imagine_video_instruction,
     imagine_video_usage_message,
-};
-pub use deep_research::DeepResearchTool;
-pub use obscura::{
-    DumpMode, ObscuraConfig, ObscuraFetchTool, ObscuraInput, ObscuraScrapeInput,
-    ObscuraScrapeTool, ObscuraTool, ScrapeFormat, WaitUntil,
-};
-pub use obscura::session::{
-    BrowserSession, ObscuraDynamicTool, ObscuraToolDef,
-    register_obscura_tools,
 };
 pub use web_fetch::{WebFetchClient, WebFetchConfig, WebFetchParams, WebFetchTool};
 pub use web_search::WebSearchTool;

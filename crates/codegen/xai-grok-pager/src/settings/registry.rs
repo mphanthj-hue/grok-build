@@ -738,9 +738,7 @@ pub fn current_value_for(
         // Read from config.toml via the shell's effective config loader.
         // Falls back to defaults on error or if key is missing.
         "warp_enabled" => Some(current_warp_bool("enabled", false)),
-        "warp_change_ip_on_compact" => {
-            Some(current_warp_bool("change_ip_on_compact", true))
-        }
+        "warp_change_ip_on_compact" => Some(current_warp_bool("change_ip_on_compact", true)),
         "warp_change_ip_on_start" => Some(current_warp_bool("change_ip_on_start", false)),
         "warp_rate_limit_secs" => Some(current_warp_int("rate_limit_secs", 300)),
 

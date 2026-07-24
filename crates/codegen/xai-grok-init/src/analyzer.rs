@@ -296,8 +296,14 @@ const FRAMEWORK_INDICATORS: &[(&[&str], &str)] = &[
     (&["svelte", "@sveltejs"], "Svelte"),
     (&["next", "next.js"], "Next.js"),
     (&["nuxt"], "Nuxt.js"),
-    (&["express", "axum", "actix-web", "rocket", "warp"], "Web framework"),
-    (&["django", "flask", "fastapi", "starlette"], "Python web framework"),
+    (
+        &["express", "axum", "actix-web", "rocket", "warp"],
+        "Web framework",
+    ),
+    (
+        &["django", "flask", "fastapi", "starlette"],
+        "Python web framework",
+    ),
     (&["spring", "spring-boot"], "Spring"),
     (&["turbo", "nx"], "Monorepo tool"),
 ];
@@ -424,7 +430,11 @@ fn detect_build_system(project: &ScannedProject) -> Option<BuildSystem> {
                         || f.relative_path == "bun.lockb"
                 });
                 if has_lock {
-                    if project.files.iter().any(|f| f.relative_path == "pnpm-lock.yaml") {
+                    if project
+                        .files
+                        .iter()
+                        .any(|f| f.relative_path == "pnpm-lock.yaml")
+                    {
                         return Some(BuildSystem::Pnpm);
                     }
                     if project.files.iter().any(|f| f.relative_path == "yarn.lock") {
@@ -448,7 +458,11 @@ fn detect_build_system(project: &ScannedProject) -> Option<BuildSystem> {
                     }
                 }
                 // Check for uv.lock
-                if project.files.iter().any(|f| f.relative_path == "uv.lock" || f.relative_path == ".uv.lock") {
+                if project
+                    .files
+                    .iter()
+                    .any(|f| f.relative_path == "uv.lock" || f.relative_path == ".uv.lock")
+                {
                     return Some(BuildSystem::Uv);
                 }
                 return Some(BuildSystem::Pip);
@@ -470,7 +484,10 @@ fn detect_test_frameworks(project: &ScannedProject) -> Vec<TestFramework> {
     for manifest in &project.manifests {
         match manifest {
             Manifest::CargoToml { deps, .. } => {
-                if deps.iter().any(|d| d == "cargo-test" || d == "tests" || d == "test") {
+                if deps
+                    .iter()
+                    .any(|d| d == "cargo-test" || d == "tests" || d == "test")
+                {
                     frameworks.push(TestFramework::CargoTest);
                 }
                 // Rust projects almost always use cargo test
@@ -478,29 +495,43 @@ fn detect_test_frameworks(project: &ScannedProject) -> Vec<TestFramework> {
                     frameworks.push(TestFramework::CargoTest);
                 }
             }
-            Manifest::PackageJson { scripts, deps, dev_deps, .. } => {
+            Manifest::PackageJson {
+                scripts,
+                deps,
+                dev_deps,
+                ..
+            } => {
                 // Check scripts
                 for (_, cmd) in scripts {
                     let cmd_lower = cmd.to_lowercase();
                     if cmd_lower.contains("jest") && !frameworks.contains(&TestFramework::Jest) {
                         frameworks.push(TestFramework::Jest);
                     }
-                    if cmd_lower.contains("vitest") && !frameworks.contains(&TestFramework::Vitest) {
+                    if cmd_lower.contains("vitest") && !frameworks.contains(&TestFramework::Vitest)
+                    {
                         frameworks.push(TestFramework::Vitest);
                     }
                     if cmd_lower.contains("mocha") && !frameworks.contains(&TestFramework::Mocha) {
                         frameworks.push(TestFramework::Mocha);
                     }
-                    if cmd_lower.contains("playwright") && !frameworks.contains(&TestFramework::Playwright) {
+                    if cmd_lower.contains("playwright")
+                        && !frameworks.contains(&TestFramework::Playwright)
+                    {
                         frameworks.push(TestFramework::Playwright);
                     }
-                    if cmd_lower.contains("cypress") && !frameworks.contains(&TestFramework::Cypress) {
+                    if cmd_lower.contains("cypress")
+                        && !frameworks.contains(&TestFramework::Cypress)
+                    {
                         frameworks.push(TestFramework::Cypress);
                     }
                 }
 
                 // Check dependencies
-                let all_deps: Vec<&str> = deps.iter().chain(dev_deps.iter()).map(|s| s.as_str()).collect();
+                let all_deps: Vec<&str> = deps
+                    .iter()
+                    .chain(dev_deps.iter())
+                    .map(|s| s.as_str())
+                    .collect();
                 let check_dep = |name: &str| all_deps.iter().any(|d| d.contains(name));
 
                 if check_dep("jest") && !frameworks.contains(&TestFramework::Jest) {
@@ -533,7 +564,11 @@ fn detect_test_frameworks(project: &ScannedProject) -> Vec<TestFramework> {
 
     // Look for test files as fallback
     if frameworks.is_empty() {
-        if project.files.iter().any(|f| f.relative_path.contains("test_") || f.relative_path.ends_with("_test.go")) {
+        if project
+            .files
+            .iter()
+            .any(|f| f.relative_path.contains("test_") || f.relative_path.ends_with("_test.go"))
+        {
             // Could be pytest, Go test, etc.
         }
     }
@@ -552,7 +587,11 @@ fn detect_linter_formatters(project: &ScannedProject) -> Vec<LinterFormatter> {
         let path = &file.relative_path;
 
         // Rust
-        if name == Some("clippy.toml") || name == Some(".clippy.toml") || path.contains("rustfmt.toml") || path.contains("rustfmt") {
+        if name == Some("clippy.toml")
+            || name == Some(".clippy.toml")
+            || path.contains("rustfmt.toml")
+            || path.contains("rustfmt")
+        {
             if name == Some(".rustfmt.toml") || path.contains("rustfmt") {
                 tools.push(LinterFormatter::Rustfmt);
             }
@@ -564,10 +603,22 @@ fn detect_linter_formatters(project: &ScannedProject) -> Vec<LinterFormatter> {
         }
 
         // JS/TS
-        if name == Some(".eslintrc") || name == Some(".eslintrc.json") || name == Some(".eslintrc.js") || name == Some(".eslintrc.yaml") || name == Some(".eslintrc.yml") || path.contains(".eslintrc") {
+        if name == Some(".eslintrc")
+            || name == Some(".eslintrc.json")
+            || name == Some(".eslintrc.js")
+            || name == Some(".eslintrc.yaml")
+            || name == Some(".eslintrc.yml")
+            || path.contains(".eslintrc")
+        {
             tools.push(LinterFormatter::ESLint);
         }
-        if name == Some(".prettierrc") || name == Some(".prettierrc.json") || name == Some(".prettierrc.js") || name == Some(".prettierrc.yaml") || name == Some(".prettierrc.toml") || path.contains(".prettierrc") {
+        if name == Some(".prettierrc")
+            || name == Some(".prettierrc.json")
+            || name == Some(".prettierrc.js")
+            || name == Some(".prettierrc.yaml")
+            || name == Some(".prettierrc.toml")
+            || path.contains(".prettierrc")
+        {
             tools.push(LinterFormatter::Prettier);
         }
         if name == Some("biome.json") || path.contains("biome.json") {
@@ -599,14 +650,26 @@ fn detect_linter_formatters(project: &ScannedProject) -> Vec<LinterFormatter> {
                 }
             }
             Manifest::PackageJson { deps, dev_deps, .. } => {
-                let all_deps: Vec<&str> = deps.iter().chain(dev_deps.iter()).map(|s| s.as_str()).collect();
-                if all_deps.iter().any(|d| *d == "eslint") && !tools.contains(&LinterFormatter::ESLint) {
+                let all_deps: Vec<&str> = deps
+                    .iter()
+                    .chain(dev_deps.iter())
+                    .map(|s| s.as_str())
+                    .collect();
+                if all_deps.iter().any(|d| *d == "eslint")
+                    && !tools.contains(&LinterFormatter::ESLint)
+                {
                     tools.push(LinterFormatter::ESLint);
                 }
-                if all_deps.iter().any(|d| *d == "prettier") && !tools.contains(&LinterFormatter::Prettier) {
+                if all_deps.iter().any(|d| *d == "prettier")
+                    && !tools.contains(&LinterFormatter::Prettier)
+                {
                     tools.push(LinterFormatter::Prettier);
                 }
-                if all_deps.iter().any(|d| *d == "@biomejs/biome" || *d == "biome") && !tools.contains(&LinterFormatter::Biome) {
+                if all_deps
+                    .iter()
+                    .any(|d| *d == "@biomejs/biome" || *d == "biome")
+                    && !tools.contains(&LinterFormatter::Biome)
+                {
                     tools.push(LinterFormatter::Biome);
                 }
             }
@@ -655,7 +718,10 @@ fn detect_frameworks(project: &ScannedProject) -> Vec<String> {
     }
 
     for (indicators, framework_name) in FRAMEWORK_INDICATORS {
-        if indicators.iter().any(|ind| dep_set.contains(&ind.to_lowercase())) {
+        if indicators
+            .iter()
+            .any(|ind| dep_set.contains(&ind.to_lowercase()))
+        {
             frameworks.push(framework_name.to_string());
         }
     }
@@ -703,9 +769,24 @@ fn infer_source_dirs(project: &ScannedProject, _languages: &[DetectedLanguage]) 
     let mut dirs = Vec::new();
 
     let known_src_dirs = [
-        "src", "lib", "app", "packages", "crates", "components",
-        "api", "routes", "pages", "services", "cmd", "internal",
-        "pkg", "backend", "frontend", "web", "server", "client",
+        "src",
+        "lib",
+        "app",
+        "packages",
+        "crates",
+        "components",
+        "api",
+        "routes",
+        "pages",
+        "services",
+        "cmd",
+        "internal",
+        "pkg",
+        "backend",
+        "frontend",
+        "web",
+        "server",
+        "client",
     ];
 
     for dir in &project.top_level_dirs {
@@ -772,7 +853,10 @@ fn extract_commands(
                 if !cmd.is_empty() && !cmds.other.contains(&cmd) {
                     if cmd.contains("test") {
                         cmds.test.push(cmd);
-                    } else if cmd.contains("lint") || cmd.contains("clippy") || cmd.contains("eslint") {
+                    } else if cmd.contains("lint")
+                        || cmd.contains("clippy")
+                        || cmd.contains("eslint")
+                    {
                         cmds.lint.push(cmd);
                     } else if cmd.contains("build") {
                         cmds.build.push(cmd);
@@ -823,7 +907,8 @@ fn infer_conventions(
                     certainty: Certainty::Medium,
                 });
                 conventions.push(Convention {
-                    description: "Run `cargo fmt` before committing to ensure consistent formatting".into(),
+                    description:
+                        "Run `cargo fmt` before committing to ensure consistent formatting".into(),
                     certainty: Certainty::High,
                 });
             }
@@ -852,7 +937,9 @@ fn infer_conventions(
     // Monorepo conventions
     if monorepo {
         conventions.push(Convention {
-            description: "This is a monorepo with multiple packages — scope changes to the relevant package".into(),
+            description:
+                "This is a monorepo with multiple packages — scope changes to the relevant package"
+                    .into(),
             certainty: Certainty::High,
         });
     }
@@ -937,7 +1024,8 @@ fn infer_conventions(
     // Git conventions
     if project.is_worktree {
         conventions.push(Convention {
-            description: "This is a git worktree — be aware of which branch it corresponds to".into(),
+            description: "This is a git worktree — be aware of which branch it corresponds to"
+                .into(),
             certainty: Certainty::Medium,
         });
     }

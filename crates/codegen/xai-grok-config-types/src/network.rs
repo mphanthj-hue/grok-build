@@ -141,19 +141,13 @@ auto_start_service = false
     fn sudo_policy_deser() {
         // Deserialize from within a proper TOML table structure
         // (toml 0.9+ doesn't support bare string values as documents)
-        let cfg: WarpConfig = toml::from_str(
-            "sudo_policy = \"ask\"\n"
-        ).unwrap();
+        let cfg: WarpConfig = toml::from_str("sudo_policy = \"ask\"\n").unwrap();
         assert_eq!(cfg.sudo_policy, SudoPolicy::Ask);
 
-        let cfg: WarpConfig = toml::from_str(
-            "sudo_policy = \"always_allow\"\n"
-        ).unwrap();
+        let cfg: WarpConfig = toml::from_str("sudo_policy = \"always_allow\"\n").unwrap();
         assert_eq!(cfg.sudo_policy, SudoPolicy::AlwaysAllow);
 
-        let cfg: WarpConfig = toml::from_str(
-            "sudo_policy = \"always_deny\"\n"
-        ).unwrap();
+        let cfg: WarpConfig = toml::from_str("sudo_policy = \"always_deny\"\n").unwrap();
         assert_eq!(cfg.sudo_policy, SudoPolicy::AlwaysDeny);
     }
 
