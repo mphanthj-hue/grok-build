@@ -338,11 +338,16 @@ pub fn warp_status_line(theme: &Theme) -> Option<Line<'static>> {
     use std::process::Command;
 
     // Quick check: is WARP enabled in config?
-    let config_path = std::env::var("HOME").ok().map(|h| format!("{h}/.grok/config.toml"));
-    let warp_enabled = config_path.as_ref().and_then(|p| {
-        let content = std::fs::read_to_string(p).ok()?;
-        Some(content.contains("[network.warp]\nenabled = true"))
-    }).unwrap_or(false);
+    let config_path = std::env::var("HOME")
+        .ok()
+        .map(|h| format!("{h}/.grok/config.toml"));
+    let warp_enabled = config_path
+        .as_ref()
+        .and_then(|p| {
+            let content = std::fs::read_to_string(p).ok()?;
+            Some(content.contains("[network.warp]\nenabled = true"))
+        })
+        .unwrap_or(false);
 
     if !warp_enabled {
         return None;
@@ -372,7 +377,11 @@ pub fn warp_status_line(theme: &Theme) -> Option<Line<'static>> {
         String::new()
     };
 
-    let color = if connected { theme.accent_success } else { theme.gray_dim };
+    let color = if connected {
+        theme.accent_success
+    } else {
+        theme.gray_dim
+    };
     let dot = if connected { "●" } else { "○" };
     let text = if connected && !ip.is_empty() {
         format!("WARP {} {}", dot, ip)
