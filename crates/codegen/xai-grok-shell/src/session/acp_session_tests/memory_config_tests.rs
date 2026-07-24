@@ -303,6 +303,7 @@ async fn create_test_actor_with_memory(
         subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
         workspace_ops: xai_grok_workspace::WorkspaceOps::for_test(),
         trace_config_template: std::cell::RefCell::new(None),
+        warp_rotation_state: None,
     }
 }
 #[tokio::test(flavor = "current_thread")]

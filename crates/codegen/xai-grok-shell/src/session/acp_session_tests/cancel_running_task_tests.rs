@@ -296,6 +296,7 @@ async fn persist_ack_waits_for_disk_flush_before_success() {
                 subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
                 workspace_ops: xai_grok_workspace::WorkspaceOps::for_test(),
                 trace_config_template: std::cell::RefCell::new(None),
+                warp_rotation_state: None,
             });
             let prompt_blocks = vec![acp::ContentBlock::Text(acp::TextContent::new(
                 "hello persist".to_string(),
@@ -764,6 +765,7 @@ async fn first_turn_memory_injection_disabled_does_not_persist_to_chat_history()
                 subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
                 workspace_ops: xai_grok_workspace::WorkspaceOps::for_test(),
                 trace_config_template: std::cell::RefCell::new(None),
+                warp_rotation_state: None,
             });
             let _ = actor
                 .process_conversation_turn_with_recovery("disabled-memory", None, None, None)
@@ -1064,6 +1066,7 @@ async fn cancel_running_task_teardown_clears_running_and_pending_work() {
                 subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
                 workspace_ops: xai_grok_workspace::WorkspaceOps::for_test(),
                 trace_config_template: std::cell::RefCell::new(None),
+                warp_rotation_state: None,
             };
             let (tx, rx) = tokio::sync::oneshot::channel();
             let bridge = actor.agent.borrow().tool_bridge().clone();
@@ -2319,6 +2322,7 @@ async fn cancel_propagates_to_sampler_handle_so_no_further_emission() {
                 subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
                 workspace_ops: xai_grok_workspace::WorkspaceOps::for_test(),
                 trace_config_template: std::cell::RefCell::new(None),
+                warp_rotation_state: None,
             };
             let request_id = xai_grok_sampler::RequestId::random();
             let request_id_for_task = request_id.clone();

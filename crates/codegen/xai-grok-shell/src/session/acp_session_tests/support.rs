@@ -406,6 +406,7 @@ pub(crate) async fn create_test_actor_ex(
         subagent_token_records: parking_lot::Mutex::new(HashMap::new()),
         workspace_ops: xai_grok_workspace::WorkspaceOps::for_test(),
         trace_config_template: std::cell::RefCell::new(None),
+        warp_rotation_state: None,
     };
     if let Some(reservations) = actor.tool_context.task_completion_reservations.clone() {
         actor
