@@ -186,9 +186,25 @@ pub fn stream_chat_completions<'a>(
                     chunk_has_content = true;
                     chunk_index += 1;
                     reasoning_acc.push_str(&thought);
+
+                    // Some models (e.g. deepseek-v4-flash-free via OpenCode Zen)
+                    // stream ALL output through `reasoning_content` and never
+                    // set `delta.content`. When no content has arrived yet,
+                    // promote reasoning to the Text channel so the user sees
+                    // streaming output and `fallback_text()` finds non-empty
+                    // content. Once any content token lands, reasoning stays
+                    // on the Reasoning channel as intended.
+                    let channel = if content_acc.is_empty() {
+                        content_acc.push_str(&thought);
+                        message_chunk_count += 1;
+                        SamplingChannel::Text
+                    } else {
+                        SamplingChannel::Reasoning
+                    };
+
                     yield SamplingEvent::ChannelToken {
                         request_id: request_id.clone(),
-                        channel: SamplingChannel::Reasoning,
+                        channel,
                         text: thought,
                         chunk_index,
                     };
