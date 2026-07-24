@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: sudo apt-get update -q && sudo apt-get install -y binutils mold 2>/dev/null || true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.92.0"
@@ -37,6 +38,7 @@ jobs:
     needs: fmt
     steps:
       - uses: actions/checkout@v4
+      - run: sudo apt-get update -q && sudo apt-get install -y binutils mold 2>/dev/null || true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.92.0"
@@ -55,6 +57,7 @@ jobs:
     needs: fmt
     steps:
       - uses: actions/checkout@v4
+      - run: sudo apt-get update -q && sudo apt-get install -y binutils mold 2>/dev/null || true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.92.0"
