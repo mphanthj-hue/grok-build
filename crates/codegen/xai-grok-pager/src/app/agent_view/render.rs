@@ -1319,6 +1319,10 @@ impl AgentView {
         }) {
             status.push("mcp", mcp_line);
         }
+        // WARP connection indicator
+        if let Some(warp_line) = crate::views::agent_status::warp_status_line(&theme) {
+            status.push("warp", warp_line);
+        }
         let ctx_used = self.context_state.as_ref().map(|c| c.used);
         let model_window = self.session.models.get_context_window();
         let ctx_total = self

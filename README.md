@@ -119,6 +119,16 @@ cargo clippy -p <crate>       # lint config: clippy.toml at the repo root
 cargo fmt --all               # rustfmt.toml at the repo root
 ```
 
+### CI/CD
+
+This repository uses GitHub Actions for continuous integration and deployment.
+Workflows are defined in [`.github/workflows/`](.github/workflows/):
+
+- `ci.yml` - Main CI pipeline (check, test, build)
+- `lint.yml` - Code quality checks (rustfmt, clippy, docs)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+
 ## Contributing
 
 > [!NOTE]
