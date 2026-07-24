@@ -137,6 +137,7 @@ async fn run_obscura(
         foreground_block_budget: None,
         kind: TaskKind::Bash,
         owner_session_id: None,
+        description: None,
     };
 
     let result = terminal.run(req).await.map_err(|e| {
