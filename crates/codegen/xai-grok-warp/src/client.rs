@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::platform::{Platform, find_warp_cli};
-use crate::{WarpHealth, WarpStatus, WARP_CLI_TIMEOUT_SECS, WarpError};
+use crate::{WARP_CLI_TIMEOUT_SECS, WarpError, WarpHealth, WarpStatus};
 
 /// Client for interacting with Cloudflare WARP via the `warp-cli` binary.
 ///
@@ -237,10 +237,7 @@ mod tests {
 
     #[test]
     fn build_args_linux_accept_tos() {
-        let client = WarpClient::new(
-            PathBuf::from("/usr/bin/warp-cli"),
-            Platform::Linux,
-        );
+        let client = WarpClient::new(PathBuf::from("/usr/bin/warp-cli"), Platform::Linux);
         let args = client.build_args(&["status"]);
         assert_eq!(args, vec!["--accept-tos", "status"]);
     }
@@ -257,10 +254,7 @@ mod tests {
 
     #[test]
     fn build_args_wsl2_accept_tos() {
-        let client = WarpClient::new(
-            PathBuf::from("/usr/bin/warp-cli"),
-            Platform::Wsl2,
-        );
+        let client = WarpClient::new(PathBuf::from("/usr/bin/warp-cli"), Platform::Wsl2);
         let args = client.build_args(&["status"]);
         assert_eq!(args, vec!["--accept-tos", "status"]);
     }

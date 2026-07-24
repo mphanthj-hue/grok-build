@@ -1,3 +1,11 @@
+[build]
+# sccache: cache biên dịch, giúp build nhanh hơn 3-5 lần lần sau
+rustc-wrapper = "sccache"
+# Giới hạn jobs = 2 (thay vì hết 4 core) để tránh CPU/memory thrashing
+# khi build song song với agent đang chạy. Có thể tăng lên nếu build
+# một mình không kèm việc gì khác.
+jobs = 2
+
 # link-arg
 # https://pyo3.rs/v0.17.1/building_and_distribution.html#macos
 
@@ -32,7 +40,10 @@ rustflags = [
 ]
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "force-unwind-tables=yes"]
+rustflags = [
+    "-C", "link-arg=-fuse-ld=mold",
+    "-C", "force-unwind-tables=yes",
+]
 
 [target.aarch64-unknown-linux-gnu]
 rustflags = ["-C", "target-cpu=neoverse-v2", "-C", "force-unwind-tables=yes"]
