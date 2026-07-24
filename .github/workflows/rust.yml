@@ -138,7 +138,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -q && sudo apt-get install -y binutils mold 2>/dev/null || true
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y binutils mold 2>/dev/null || true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.92.0"
