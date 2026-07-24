@@ -92,16 +92,23 @@ jobs:
 
       - name: Setup aarch64 OpenSSL sysroot
         run: |
-          RELEASE=$(lsb_release -cs)
-          mkdir -p /tmp/aarch64-sysroot/usr
+          mkdir -p /tmp/aarch64-sysroot
           cd /tmp/aarch64-sysroot
           PKG_URL="http://ports.ubuntu.com/ubuntu-ports/pool/main/o/openssl/"
-          PKG_NAME=$(curl -sL "$PKG_URL" | grep -oP "libssl-dev_\d+\.\d+\.\d+-[^\"']*_arm64\.deb" | sort -V | tail -1)
-          echo "Downloading $PKG_NAME for $RELEASE"
+          PKG_NAME=$(curl -sL "$PKG_URL" | grep -oP "libssl-dev_3\.0\.\d+-[^\"']*_arm64\.deb" | sort -V | tail -1)
+          echo "Downloading $PKG_NAME"
           curl -sL "$PKG_URL$PKG_NAME" -o libssl-dev.deb
           dpkg-deb -x libssl-dev.deb .
           rm libssl-dev.deb
-          echo "OPENSSL_DIR=/tmp/aarch64-sysroot/usr" >> $GITHUB_ENV
+          INCDIR=$(find /tmp/aarch64-sysroot -name "opensslconf.h" -exec dirname {} \; 2>/dev/null | head -1)
+          LIBDIR=$(find /tmp/aarch64-sysroot -name "libssl.a" -exec dirname {} \; 2>/dev/null | head -1)
+          if [ -n "$INCDIR" ]; then
+            echo "OPENSSL_INCLUDE_DIR=$(dirname "$INCDIR")" >> $GITHUB_ENV
+          fi
+          if [ -n "$LIBDIR" ]; then
+            echo "OPENSSL_LIB_DIR=$LIBDIR" >> $GITHUB_ENV
+          fi
+          echo "OPENSSL_NO_PKG_CONFIG=1" >> $GITHUB_ENV
       - name: cargo check (aarch64)
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
