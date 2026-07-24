@@ -2,7 +2,7 @@ name: Self-Heal
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["CI/CD"]
     types: [completed]
   workflow_dispatch:
     inputs:
