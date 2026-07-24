@@ -134,28 +134,43 @@ Sử dụng `memory__create_entities`, `memory__add_observations`, `memory__crea
 </auto-memory>
 
 <auto-parallel>
-### Tự động Parallel Subagents
+### Tự động Parallel Subagents (Bắt buộc khi có thể)
 
-Khi nhận task phức tạp có thể chia thành nhiều subtasks độc lập:
+**Chủ động dispatch subagent song song** bất kỳ khi nào task có thể split — không đợi anh Nghĩa yêu cầu. Đây là cách chính để tận dụng tối đa sức mạnh của 8 subagent.
 
-1. **Phân tích:** Xác định xem task có thể split thành subtasks không
-   - Subtasks phải THỰC SỰ độc lập (không shared state, không dependency)
-   - Nếu subtask A cần kết quả của subtask B → gộp chung hoặc chạy sequential
-   - Nếu không thể split → làm bình thường, không parallel
+#### Khi nào dispatch?
 
-2. **Dispatch:** Dùng `spawn_subagent` để dispatch song song
-   - Mỗi subagent nhận 1 subtask với instructions đầy đủ, self-contained
-   - Dispatch tất cả trong cùng 1 response để chạy concurrent
-   - Dùng `isolation_worktree` nếu subtask edit file (tránh conflict)
+| Tình huống | Nên parallel? | Ví dụ |
+|-----------|--------------|-------|
+| Fix bug ở nhiều file độc lập | ✅ Mạnh dạn dispatch | 3 file bug → 3 subagent implement độc lập |
+| Research nhiều chủ đề | ✅ Mạnh dạn dispatch | 5 thư viện → 5 subagent research |
+| Review nhiều module | ✅ Mạnh dạn dispatch | 4 module → 4 subagent review |
+| Code review + Fix cùng lúc | ✅ 1 review subagent + N fix subagent | Reviewer đọc → fixer sửa |
+| Task tuần tự (A→B→C) | ❌ Gộp chung 1 subagent | implement xong mới test được |
+| File quá lớn, nhiều người sửa | ❌ Gộp chung | Tránh conflict |
 
-3. **Thu thập:** Dùng `get_command_or_subagent_output` để lấy kết quả từ mỗi subagent
+#### Cách dispatch
 
-4. **Tổng hợp:** Gom kết quả, kiểm tra conflict, báo cáo cho anh Nghĩa
+1. **Phân tích:** Task có thể split? Subtasks THỰC SỰ độc lập? (không shared state, không dependency chéo)
+2. **Dispatch:** Gọi `spawn_subagent` cho TẤT CẢ subtask trong cùng 1 response
+   - Mỗi subagent nhận instructions self-contained (đủ context để làm mà không cần hỏi lại)
+   - `capability_mode`: ưu tiên thấp nhất có thể
+     - `"read-only"` — research, review, grep (không cần edit)
+     - `"read-write"` — viết docs, sửa file đơn giản
+     - `"execute"` — chạy test, build, debug
+     - `"all"` — implement full, refactor (dùng worktree isolation)
+   - `isolation_worktree: true` nếu subtask edit file
+3. **Thu thập:** `get_command_or_subagent_output` để lấy kết quả
+4. **Tổng hợp:** Gom kết quả, kiểm tra conflict, báo cáo
 
-**Lưu ý:**
-- Chỉ parallel khi subtasks THỰC SỰ độc lập
-- Nếu có dependency → chạy sequential, đừng cố parallel
-- Verify không có conflict trước khi báo done
-- Tối đa 4-8 subagents song song (tuỳ `max_parallel` config)
-- Có thể dùng workflow `auto-parallel` cho task phức tạp: `/workflow auto-parallel task="..."`
+#### Nguyên tắc phân bổ thông minh
+
+- **Task đọc/research** (I/O-bound) → chạy full 8 subagent vì chủ yếu chờ API — không tranh CPU
+- **Task build/test** (CPU-bound) → giới hạn 3-4 subagent vì tranh CPU với agent chính
+- **Mix:** dispatch 4-5 subagent read-only + 2-3 subagent execute
+- Nếu không chắc → dispatch `"read-only"` trước (phân tích), sau đó dispatch `"all"` dựa trên kết quả
+
+**Tối đa: 8 subagent** (theo config `max_parallel = 8`).
+
+Có thể dùng workflow `/workflow auto-parallel task="..." max_agents=8` cho task phức tạp cần orchestration.
 </auto-parallel>
