@@ -325,6 +325,65 @@ pub fn mcp_status_line(
     ]))
 }
 
+// ---------------------------------------------------------------------------
+// WARP connection indicator
+// ---------------------------------------------------------------------------
+
+/// Build the WARP connection indicator for the agent status bar.
+///
+/// Checks `warp-cli status` at call time.  Shows `● <ip>` when connected
+/// (green), `○` when disconnected (dim).  Returns `None` if `warp-cli`
+/// is not installed or WARP is disabled in config.
+pub fn warp_status_line(theme: &Theme) -> Option<Line<'static>> {
+    use std::process::Command;
+
+    // Quick check: is WARP enabled in config?
+    let config_path = std::env::var("HOME").ok().map(|h| format!("{h}/.grok/config.toml"));
+    let warp_enabled = config_path.as_ref().and_then(|p| {
+        let content = std::fs::read_to_string(p).ok()?;
+        Some(content.contains("[network.warp]\nenabled = true"))
+    }).unwrap_or(false);
+
+    if !warp_enabled {
+        return None;
+    }
+
+    let status = Command::new("warp-cli")
+        .args(["status"])
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .unwrap_or_default();
+
+    let connected = status.contains("Connected");
+
+    let ip = if connected {
+        Command::new("curl")
+            .args(["-s", "--max-time", "2", "https://1.1.1.1/cdn-cgi/trace"])
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default()
+            .lines()
+            .find(|l| l.starts_with("ip="))
+            .map(|l| l.trim_start_matches("ip=").to_string())
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
+
+    let color = if connected { theme.accent_success } else { theme.gray_dim };
+    let dot = if connected { "●" } else { "○" };
+    let text = if connected && !ip.is_empty() {
+        format!("WARP {} {}", dot, ip)
+    } else {
+        format!("WARP {}", dot)
+    };
+
+    let style = Style::default().fg(color).bg(theme.bg_base);
+    Some(Line::from(Span::styled(text, style)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,4 +1,4 @@
-# Clippy config for crates/codegen/**.
+# Clippy config for grok-build project
 #
 # NOTE: clippy uses the NEAREST clippy.toml (no merging), so this file must
 # duplicate any settings from the repo-root //clippy.toml.
@@ -26,3 +26,8 @@ disallowed-methods = [
     { path = "std::path::Path::canonicalize", reason = "returns \\\\?\\ verbatim paths on Windows; use dunce::canonicalize" },
     { path = "tokio::fs::canonicalize", reason = "returns \\\\?\\ verbatim paths on Windows; use xai_grok_tools::util::fs helpers or spawn_blocking + dunce::canonicalize" },
 ]
+
+# Additional lints for code quality
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250
+single-char-binding-names-threshold = 4

@@ -125,6 +125,11 @@ pub enum RetryDecision {
     /// error, first retry only).
     RetryWithClientRebuild { backoff: Duration },
 
+    /// Retry after rotating the network connection (WARP reconnect) to
+    /// get a fresh IP. Used when rate-limit (429) retries are exhausted
+    /// — the caller runs `warp-reconnect` during the backoff sleep.
+    RetryWithNewConnection { backoff: Duration },
+
     /// Emit the error to the session and let it decide what to do
     /// (auth refresh, encrypted-content mismatch).
     EmitToSession(SamplingError),
@@ -208,15 +213,22 @@ pub fn classify_error(
     }
 
     // Rate-limited (429): cap retries at the rate-limit threshold to
-    // avoid burning long waits.
+    // avoid burning long waits. On the last retry, try WARP reconnect
+    // (rotate IP) before giving up.
     if err.is_rate_limited() {
         let next_attempt = retry_count + 1;
         let effective_cap = max_retries.min(rate_limit_threshold);
         if effective_cap == 0 {
             return RetryDecision::Fatal(clone_error(err));
         }
-        if next_attempt >= effective_cap {
+        if next_attempt >= effective_cap + 1 {
+            // Already tried WARP reconnect, still rate limited.
             return RetryDecision::Fatal(clone_error(err));
+        }
+        if next_attempt == effective_cap {
+            // Last rate-limit retry: try WARP reconnect for a fresh IP.
+            let backoff = retry_backoff_with_jitter(next_attempt);
+            return RetryDecision::RetryWithNewConnection { backoff };
         }
         let backoff = err
             .retry_after()
@@ -614,14 +626,24 @@ mod tests {
     }
 
     #[test]
-    fn classify_rate_limited_capped_at_threshold() {
+    fn classify_rate_limited_capped_at_threshold_triggers_reconnect() {
         let err = api_err(StatusCode::TOO_MANY_REQUESTS, "slow");
-        // retry_count=1, threshold=2 -> next_attempt=2 >= 2 -> Fatal.
+        // retry_count=1, threshold=2 -> next_attempt=2 == effective_cap -> RetryWithNewConnection.
         match classify_error(&err, 1, 5, RATE_LIMIT_RETRY_THRESHOLD) {
+            RetryDecision::RetryWithNewConnection { .. } => {}
+            other => panic!("expected RetryWithNewConnection at threshold, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn classify_rate_limited_after_reconnect_is_fatal() {
+        let err = api_err(StatusCode::TOO_MANY_REQUESTS, "slow");
+        // retry_count=2, threshold=2 -> next_attempt=3 >= effective_cap+1 -> Fatal.
+        match classify_error(&err, 2, 5, RATE_LIMIT_RETRY_THRESHOLD) {
             RetryDecision::Fatal(SamplingError::Api { status, .. }) => {
                 assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
             }
-            other => panic!("expected Fatal at threshold, got {other:?}"),
+            other => panic!("expected Fatal after reconnect, got {other:?}"),
         }
     }
 

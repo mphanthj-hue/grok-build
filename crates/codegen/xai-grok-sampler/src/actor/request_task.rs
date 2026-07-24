@@ -410,6 +410,26 @@ async fn apply_retry_decision(
             }
             true
         }
+        RetryDecision::RetryWithNewConnection { backoff } => {
+            *retry_count += 1;
+            emit_retrying(event_tx, request_id, *retry_count, max_retries, err);
+
+            // Run WARP reconnect (rotate IP) in background during backoff sleep
+            // so the total wait is just the backoff, not backoff + reconnect.
+            let reconnect = tokio::task::spawn_blocking(|| {
+                let _ = std::process::Command::new("warp-reconnect").output();
+            });
+
+            if !sleep_or_cancel(backoff, cancel_token).await {
+                handle_cancellation(event_tx, request_id, completion_tx);
+                return false;
+            }
+
+            // Wait for reconnect to finish (likely already done)
+            let _ = reconnect.await;
+
+            true
+        }
         RetryDecision::EmitToSession(emitted_err) => {
             emit_failed(event_tx, request_id, &emitted_err);
             send_completion(completion_tx, Err(emitted_err));
