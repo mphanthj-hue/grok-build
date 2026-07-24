@@ -166,12 +166,24 @@ jobs:
             target/${{ matrix.target }}/release-dist/grok.debug
           strip --strip-debug \
             target/${{ matrix.target }}/release-dist/grok
+      - name: Rename to versioned format for gh-release
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu) os_arch="linux-x86_64" ;;
+            aarch64-unknown-linux-gnu) os_arch="linux-aarch64" ;;
+            x86_64-pc-windows-msvc) os_arch="windows-x86_64" ;;
+          esac
+          ver="${GITHUB_REF_NAME#v}"
+          dir="target/${{ matrix.target }}/release-dist"
+          mv "$dir/grok${{ matrix.ext }}" "$dir/grok-${ver}-${os_arch}${{ matrix.ext }}"
+          if [ -f "$dir/grok.debug" ]; then
+            mv "$dir/grok.debug" "$dir/grok-${ver}-${os_arch}.debug"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: grok-${{ matrix.target }}
-          path: |
-            target/${{ matrix.target }}/release-dist/grok${{ matrix.ext }}
-            target/${{ matrix.target }}/release-dist/grok.debug
+          path: target/${{ matrix.target }}/release-dist/grok-*
 
   publish:
     name: Publish Release
@@ -188,7 +200,10 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          find . -type f ! -name '*.sha256' -exec sha256sum {} \; > checksums.txt
+          find . -type f -name 'checksums.txt' -prune -o -type f -print | sort | while IFS= read -r f; do
+            sha256sum "$f"
+          done > checksums.txt
+          cat checksums.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
