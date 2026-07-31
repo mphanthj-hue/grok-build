@@ -14,6 +14,11 @@ concurrency:
   group: build-bin-${{ github.ref }}
   cancel-in-progress: true
 
+# GITHUB_TOKEN needs contents:write to create the GitHub Release and
+# attach the binary asset to it.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
