@@ -711,6 +711,7 @@ impl From<FinishReason> for StopReason {
             FinishReason::Length => StopReason::Length,
             FinishReason::ToolCalls | FinishReason::FunctionCall => StopReason::ToolCalls,
             FinishReason::ContentFilter => StopReason::ContentFilter,
+            FinishReason::Other => StopReason::Stop,
         }
     }
 }
@@ -1328,6 +1329,7 @@ impl xai_grok_compaction::CompactionItem for ConversationItem {
             Role::User => CompactionRole::User,
             Role::Assistant => CompactionRole::Assistant,
             Role::Tool => CompactionRole::Tool,
+            Role::Other => CompactionRole::User,
         }
     }
 

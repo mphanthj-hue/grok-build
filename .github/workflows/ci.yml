@@ -1,0 +1,39 @@
+name: CI
+
+# Build + test the sampling crates on every push/PR.
+# Used instead of local builds: code is verified on GitHub's runners.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-sampling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      # Repo pins Rust 1.92.0 via rust-toolchain.toml; install it explicitly
+      # so rustup does not need to resolve it lazily on first cargo run.
+      - name: Install Rust toolchain (1.92.0)
+        run: |
+          rustup toolchain install 1.92.0 --profile minimal --component rustfmt,clippy
+          rustup default 1.92.0
+
+      - name: Cache cargo registry + build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build sampling crates
+        run: cargo build -p xai-grok-sampling-types -p xai-grok-sampler
+
+      - name: Test sampling crates
+        run: cargo test -p xai-grok-sampling-types -p xai-grok-sampler
+
+      - name: Clippy (sampling crates)
+        run: cargo clippy -p xai-grok-sampling-types -p xai-grok-sampler --all-targets

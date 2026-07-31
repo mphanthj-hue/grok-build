@@ -359,6 +359,10 @@ pub enum Role {
     User,
     Assistant,
     Tool,
+    /// Any role not recognized from the wire (provider-specific, e.g.
+    /// "developer", "function"). Never constructed in our own code.
+    #[serde(other)]
+    Other,
 }
 
 /// Calculate how many chat messages to keep for a given target prompt index (0-based, inclusive).
@@ -485,6 +489,10 @@ pub enum FinishReason {
     ToolCalls,
     ContentFilter,
     FunctionCall,
+    /// Any finish reason not recognized from the wire (provider-specific,
+    /// e.g. "eos", "stop_sequence"). Never constructed in our own code.
+    #[serde(other)]
+    Other,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -534,8 +542,11 @@ impl ToolCallFunction {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Usage {
+    #[serde(default)]
     pub prompt_tokens: u32,
+    #[serde(default)]
     pub completion_tokens: u32,
+    #[serde(default)]
     pub total_tokens: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt_tokens_details: Option<PromptTokensDetails>,
@@ -571,10 +582,15 @@ pub struct CompletionTokensDetails {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatCompletionChunk {
+    #[serde(default, deserialize_with = "crate::serde_helpers::string_or_default")]
     pub id: String,
+    #[serde(default, deserialize_with = "crate::serde_helpers::string_or_default")]
     pub object: String,
+    #[serde(default, deserialize_with = "crate::serde_helpers::u64_or_default")]
     pub created: u64,
+    #[serde(default, deserialize_with = "crate::serde_helpers::string_or_default")]
     pub model: String,
+    #[serde(default)]
     pub choices: Vec<ChatChunkChoice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<Usage>,
@@ -588,7 +604,9 @@ pub struct ChatCompletionChunk {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatChunkChoice {
+    #[serde(default)]
     pub index: u32,
+    #[serde(default)]
     pub delta: ChatChunkDelta,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<FinishReason>,
@@ -637,6 +655,7 @@ pub struct ChatChunkDelta {
     pub role: Option<Role>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_content: Option<String>,
     /// Tool call deltas. Handles `null` in JSON as empty vec.
     #[serde(
@@ -1472,6 +1491,74 @@ mod tests {
         assert_eq!(delta.role, Some(Role::Assistant));
         assert_eq!(delta.content, Some("".to_string()));
         assert!(delta.tool_calls.is_empty());
+    }
+
+    /// Tolerant parsing: a provider may omit metadata fields entirely
+    /// (e.g. OpenCode Zen's @ai-sdk/openai-compatible). The chunk must still
+    /// deserialize, with sane defaults.
+    #[test]
+    fn test_chat_completion_chunk_tolerant_missing_fields() {
+        let chunk_json = r#"{
+            "choices": [
+                {
+                    "delta": { "content": "hello" }
+                }
+            ]
+        }"#;
+        let chunk = serde_json::from_str::<ChatCompletionChunk>(chunk_json)
+            .expect("chunk with missing metadata fields must deserialize");
+        assert_eq!(chunk.id, "");
+        assert_eq!(chunk.object, "");
+        assert_eq!(chunk.created, 0);
+        assert_eq!(chunk.model, "");
+        assert_eq!(chunk.choices.len(), 1);
+        assert_eq!(chunk.choices[0].index, 0);
+        assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("hello"));
+        assert!(chunk.usage.is_none());
+    }
+
+    /// Tolerant parsing: fields sent with the wrong JSON type (number as string,
+    /// string as number) must still deserialize.
+    #[test]
+    fn test_chat_completion_chunk_lenient_types() {
+        let chunk_json = r#"{
+            "id": 12345,
+            "object": "chat.completion.chunk",
+            "created": "1720000000",
+            "model": 42,
+            "choices": []
+        }"#;
+        let chunk = serde_json::from_str::<ChatCompletionChunk>(chunk_json)
+            .expect("chunk with wrong-typed metadata fields must deserialize");
+        assert_eq!(chunk.id, "12345");
+        assert_eq!(chunk.created, 1_720_000_000);
+        assert_eq!(chunk.model, "42");
+        assert!(chunk.choices.is_empty());
+    }
+
+    /// Unknown finish_reason from the wire must not fail the whole chunk.
+    #[test]
+    fn test_finish_reason_unknown_variant() {
+        let chunk_json = r#"{
+            "choices": [
+                { "delta": { "content": "x" }, "finish_reason": "eos" }
+            ]
+        }"#;
+        let chunk = serde_json::from_str::<ChatCompletionChunk>(chunk_json)
+            .expect("unknown finish_reason must deserialize to Other");
+        assert_eq!(chunk.choices[0].finish_reason, Some(FinishReason::Other));
+    }
+
+    /// Unknown role from the wire must not fail the whole chunk.
+    #[test]
+    fn test_role_unknown_variant() {
+        let delta_json = r#"{
+            "role": "developer",
+            "content": "system prompt override"
+        }"#;
+        let delta = serde_json::from_str::<ChatChunkDelta>(delta_json)
+            .expect("unknown role must deserialize to Other");
+        assert_eq!(delta.role, Some(Role::Other));
     }
 
     /// Regression test: cloning `Box<dyn TraceContext>` must not infinitely recurse.

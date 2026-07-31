@@ -1958,6 +1958,34 @@ When using `[endpoints]` with partial model overrides, the `base_url` is inherit
 
 ---
 
+### Providers that are nearly (but not 100%) OpenAI-compatible
+
+Some providers expose an OpenAI-compatible endpoint yet deviate slightly from
+the wire schema — e.g. they omit metadata fields on streaming chunks
+(`id`, `object`, `created`, `model`), send numbers as strings, or report
+non-standard `finish_reason` / `role` values. Historically such providers
+required a normalization proxy (like LiteLLM) in front of them.
+
+Grok now tolerates these minor deviations at the deserialization layer:
+missing or wrong-typed metadata fields fall back to safe defaults, and
+unknown `finish_reason` / `role` values are mapped to an `Other` variant
+instead of failing the stream. A direct connection works, no proxy needed:
+
+```toml
+[model.opencode-zen-deepseek]
+model = "deepseek-v4-flash-free"
+base_url = "https://opencode.ai/zen/v1"
+name = "DeepSeek V4 Flash (Free)"
+api_backend = "chat_completions"
+```
+
+If a provider deviates more deeply (e.g. a different `choices`/`delta`
+structure), capture the raw stream with `RUST_LOG=debug` (target
+`sampling_log`) and report the chunk shape — that level of deviation is not
+auto-tolerated.
+
+---
+
 ## MCP Servers
 
 Extend Grok's capabilities with [Model Context Protocol](https://modelcontextprotocol.io) servers.

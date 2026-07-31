@@ -60,6 +60,27 @@ impl From<ChatRequestMessage> for ConversationItem {
                     images: Vec::new(),
                 })
             }
+            Role::Other => {
+                // Treat unknown roles as user turns to avoid losing content.
+                let parts = msg
+                    .content
+                    .blocks()
+                    .into_iter()
+                    .map(|block| match block {
+                        ChatContentBlock::Text { text } => ContentPart::Text {
+                            text: Arc::<str>::from(text),
+                        },
+                        ChatContentBlock::ImageUrl { image_url } => ContentPart::Image {
+                            url: Arc::<str>::from(image_url.url),
+                        },
+                    })
+                    .collect();
+                ConversationItem::User(UserItem {
+                    content: parts,
+                    synthetic_reason: None,
+                    ..Default::default()
+                })
+            }
         }
     }
 }

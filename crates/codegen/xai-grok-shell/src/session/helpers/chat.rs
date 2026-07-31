@@ -23,6 +23,7 @@ pub fn build_transcript(messages: &[ConversationItem]) -> String {
             Role::User => "user",
             Role::Assistant => "assistant",
             Role::Tool => "tool",
+            Role::Other => "user",
         };
 
         let text_content = m.text_content();
