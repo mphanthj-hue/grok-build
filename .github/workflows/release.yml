@@ -1,0 +1,72 @@
+name: Build binary
+
+# Builds the `xai-grok-pager` release binary and attaches it to a GitHub
+# Release so it can be downloaded directly (no local build needed).
+# Runs on every push to main and on manual dispatch (Actions -> Build binary
+# -> Run workflow).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: build-bin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config nasm libssl-dev
+
+      # xai-grok-tools-api compiles .proto files; the repo's dotslash
+      # wrapper for bin/protoc is not available on runners, so install a
+      # real protoc and point PROTOC at it explicitly.
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "25.3"
+
+      # Repo pins Rust 1.92.0 via rust-toolchain.toml.
+      - name: Install Rust toolchain (1.92.0)
+        run: |
+          rustup toolchain install 1.92.0 --profile minimal
+          rustup default 1.92.0
+
+      - name: Cache cargo registry + build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: |
+          PROTOC="$(command -v protoc)" cargo build -p xai-grok-pager-bin --release
+          ls -lh target/release/xai-grok-pager
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xai-grok-pager-x86_64-unknown-linux-gnu
+          path: target/release/xai-grok-pager
+          retention-days: 30
+
+      - name: Create GitHub Release (prerelease)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-build-${{ github.run_number }}
+          name: "Grok Build CI binary #${{ github.run_number }}"
+          body: |
+            Automated build from commit `${{ github.sha }}`.
+
+            - Crate version: 0.2.116 (xai-grok-pager)
+            - Platform: Linux x86_64 (glibc, Ubuntu 24.04 runner)
+            - Tolerant-parsing layer for nearly-OpenAI-compatible providers included.
+            - How to use: download `xai-grok-pager`, `chmod +x` it, and run.
+          prerelease: true
+          files: |
+            target/release/xai-grok-pager
