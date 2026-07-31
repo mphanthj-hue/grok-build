@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # xai-grok-tools-api's build script compiles .proto files and needs a
+      # protoc binary; the repo's dotslash wrapper is not available on CI.
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "25.3"
+
       # Repo pins Rust 1.92.0 via rust-toolchain.toml; install it explicitly
       # so rustup does not need to resolve it lazily on first cargo run.
       - name: Install Rust toolchain (1.92.0)
