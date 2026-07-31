@@ -50,14 +50,33 @@ jobs:
 
       - name: Build release binary
         run: |
-          PROTOC="$(command -v protoc)" cargo build -p xai-grok-pager-bin --release
-          ls -lh target/release/xai-grok-pager
+          PROTOC="$(command -v protoc)" cargo build -p xai-grok-pager-bin --profile release-dist
+          ls -lh target/release-dist/xai-grok-pager
+
+      - name: Strip binary and keep debug symbols
+        run: |
+          cp target/release-dist/xai-grok-pager xai-grok-pager.debug
+          objcopy --only-keep-debug xai-grok-pager.debug xai-grok-pager.dbg
+          strip --strip-debug --strip-unneeded target/release-dist/xai-grok-pager
+          rm -f xai-grok-pager.debug
+          ls -lh target/release-dist/xai-grok-pager xai-grok-pager.dbg
+
+      - name: Smoke test
+        run: |
+          target/release-dist/xai-grok-pager --version
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: xai-grok-pager-x86_64-unknown-linux-gnu
-          path: target/release/xai-grok-pager
+          path: target/release-dist/xai-grok-pager
+          retention-days: 30
+
+      - name: Upload debug symbols artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xai-grok-pager-debug-symbols
+          path: xai-grok-pager.dbg
           retention-days: 30
 
       - name: Create GitHub Release (prerelease)
@@ -70,8 +89,11 @@ jobs:
 
             - Crate version: 0.2.116 (xai-grok-pager)
             - Platform: Linux x86_64 (glibc, Ubuntu 24.04 runner)
+            - Built with `release-dist` profile (thin LTO, codegen-units=1, debug=1)
             - Tolerant-parsing layer for nearly-OpenAI-compatible providers included.
             - How to use: download `xai-grok-pager`, `chmod +x` it, and run.
+            - Debug symbols available as separate artifact (`xai-grok-pager-debug-symbols`)
           prerelease: true
           files: |
-            target/release/xai-grok-pager
+            target/release-dist/xai-grok-pager
+            xai-grok-pager.dbg
